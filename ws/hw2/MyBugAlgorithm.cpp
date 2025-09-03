@@ -12,3 +12,4 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
 
     return path;
 }
+
