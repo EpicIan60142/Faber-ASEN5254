@@ -14,6 +14,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/shared")
         ${AMP_INCLUDE_DIRS}
         ${AMP_DEPENDENCY_INCLUDE_DIRS}
     )
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        message("Applying debug symbols to user_library")
+        target_compile_options(user_library PRIVATE -g -O0)
+    endif()
+
 endif()
 
 foreach(SUBDIR ${HW_SUBDIRECTORIES})
@@ -36,11 +41,13 @@ foreach(SUBDIR ${HW_SUBDIRECTORIES})
             target_include_directories(${TARGET_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/shared")
         endif()
 
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            message("Enabling debug symbols (-g) for ${TARGET_NAME}")
+            target_compile_options(${TARGET_NAME} PRIVATE -g -O0)
+        endif()
+
         if(AMP_EXCLUDE_VIS)
             target_compile_definitions(${TARGET_NAME} PRIVATE AMP_EXCLUDE_VIS)
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                target_compile_options(${TARGET_NAME} PRIVATE -g)
-            endif()
         endif()
 
         if (AMP_EXCLUDE_LOGS)

@@ -5,7 +5,7 @@
 #include "hw/HW2.h"
 
 // Include any custom headers you created in your workspace
-#include "MyBugAlgorithm.h"
+#include "Bug1.h"
 
 using namespace amp;
 
@@ -19,7 +19,6 @@ int main(int argc, char** argv) {
     //Problem2D problem = HW2::getWorkspace1();
 
     // Use WO2 from Exercise 2
-
     Problem2D problem = HW2::getWorkspace2();
 
 
@@ -36,11 +35,12 @@ int main(int argc, char** argv) {
     */
 
     // Declare your algorithm object 
-    MyBugAlgorithm algo;
+    Bug1 bug1algo;
+    bug1algo.setDr(0.01); // Set incremental distance in meters
     
     {
         // Call your algorithm on the problem
-        amp::Path2D path = algo.plan(problem);
+        amp::Path2D path = bug1algo.plan(problem);
 
         // Check your path to make sure that it does not collide with the environment 
         bool success = HW2::check(path, problem);
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
         amp::Path2D path; // Make empty path, problem, and collision points, as they will be created by generateAndCheck()
         amp::Problem2D random_prob; 
         std::vector<Eigen::Vector2d> collision_points;
-        bool random_trial_success = HW2::generateAndCheck(algo, path, random_prob, collision_points);
+        bool random_trial_success = HW2::generateAndCheck(bug1algo, path, random_prob, collision_points);
         LOG("Found valid solution in random environment: " << (random_trial_success ? "Yes!" : "No :("));
 
         LOG("path length: " << path.length());
@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
     Visualizer::saveFigures(true, "hw2_figs");
 
 
-    HW2::grade(algo, "nonhuman.biologic@myspace.edu", argc, argv);
+    HW2::grade(bug1algo, "iafa3649@colorado.edu", argc, argv);
     
     /* If you want to reconstruct your bug algorithm object every trial (to reset member variables from scratch or initialize), use this method instead*/
     //HW2::grade<MyBugAlgorithm>("nonhuman.biologic@myspace.edu", argc, argv, constructor_parameter_1, constructor_parameter_2, etc...);
