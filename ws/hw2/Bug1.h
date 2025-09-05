@@ -10,7 +10,7 @@ class Bug1 : public amp::BugAlgorithm {
         virtual amp::Path2D plan(const amp::Problem2D& problem) override;
 
         // Add any other methods here...
-        void setDr(double dr) { dr = dr; } // Setter for incremental distance
+        void setDr(double newDr) { dr = newDr; } // Setter for incremental distance
         double getDr() { return dr; } // Getter for incremental distance
 
     private:

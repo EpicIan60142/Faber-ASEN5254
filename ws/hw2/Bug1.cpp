@@ -16,14 +16,14 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
     Eigen::Vector2d candidatePoint;
 
     // Loop until we reach the goal
-    while(r_Gq.norm() > epsilon)
+    /*while(r_Gq.norm() > epsilon)
     {
 
 
 
 
 
-    }
+    }*/
 
 
     path.waypoints.push_back(problem.q_goal);
