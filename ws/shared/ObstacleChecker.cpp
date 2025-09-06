@@ -6,6 +6,104 @@
 
 #include "ObstacleChecker.h"
 
+/// @brief Function that evaluates primitives for all obstacles in a workspace for a proposed point
+/// @param point Proposed point to calculate primitives with respect to
+/// @param leftTurner Whether the robot is a left turner or not
+/// @return Boolean indicating whether the point is inside an obstacle
+bool ObstacleChecker::evaluatePrimitives(const Eigen::Vector2d &point, bool leftTurner)
+{
+    // Reset collision list
+    collisionList.clear();
+    bool collided = false;
+
+    // Loop through all obstacles and evaluate their primitives. A point is inside an obstacle if all its primitives
+    // are negative.
+    for (int i = 0; i < obstacleList.size(); i++)
+    {
+        // Extract obstacle of interest
+        amp::Obstacle2D obstacle = obstacleList[i];
+
+        // Calculate centroid of obstacle
+        Eigen::Vector2d centroid = calcCentroid(obstacle, leftTurner);
+
+        // Extract the right type of vertices
+        std::vector<Eigen::Vector2d> vertices;
+        if (leftTurner)
+        {
+            vertices = obstacle.verticesCW();
+        }
+        else
+        {
+            vertices = obstacle.verticesCCW();
+        }
+
+        // Loop through all boundaries and calculate their primitives
+        const unsigned long numBoundaries = vertices.size();
+        double primitives[numBoundaries]; // Storage array for primitive results
+        for (int ii = 0; ii < numBoundaries; ii++)
+        {
+            // Extract vertices
+            Eigen::Vector2d firstVertex = vertices[ii];
+            Eigen::Vector2d secondVertex;
+            if (ii == numBoundaries - 1)
+            {
+                secondVertex = vertices[0];
+            }
+            else
+            {
+                secondVertex = vertices[ii + 1];
+            }
+
+            // Calculate boundary vector
+            Eigen::Vector2d r_B = secondVertex - firstVertex;
+
+            // Project point onto boundary vector and translate to global frame - this is the vector to the intersection
+            // point on the boundary
+            Eigen::Vector2d r_PF = point - firstVertex;
+            Eigen::Vector2d r_IF = (r_PF.dot(r_B)/r_B.squaredNorm()) * r_B;
+            Eigen::Vector2d r_I = r_IF + firstVertex;
+
+            // Calculate vector to point from intersection
+            Eigen::Vector2d r_PI = point - r_I;
+            r_PI = r_PI/r_PI.norm();
+
+            // Project vector to centroid from intersection onto r_PI
+            Eigen::Vector2d r_CI = centroid - r_I;
+            r_CI = r_CI/r_CI.norm();
+            Eigen::Vector2d r_proj = (r_CI.dot(r_PI) / r_PI.squaredNorm()) * r_PI;
+
+            // Evaluate primitive for boundary - if vectors are in the same direction, i.e. the point is inside the
+            // obstacle, the dot product will be positive so we force it to be negative to match primitive convention
+            double dotProd = r_PI.dot(r_proj);
+            primitives[ii] = -dotProd;
+
+            // If any primitive is positive, we haven't collided. Thus, terminate the loop
+            if (primitives[ii] > 0)
+            {
+                collided = false;
+                break;
+            }
+            collided = true;
+        }
+
+        // Append obstacle to collision list if we collided
+        if (collided)
+        {
+            Collision newCollision;
+
+            newCollision.obstacle = obstacle;
+            newCollision.centroid = centroid;
+            newCollision.obstacleIndex = i;
+
+            collisionList.push_back(newCollision);
+        }
+    }
+
+    return !collisionList.empty();
+}
+
+/*
+ * OBSOLETE
 /// @brief Function that checks all obstacles in a workspace for collisions with a proposed point
 /// @param point proposed point to check collisions with
 /// @param all Boolean indicating whether to check all obstacles or just one
@@ -33,16 +131,11 @@ bool ObstacleChecker::collidesWithPoint(const Eigen::Vector2d &point, bool all, 
             }
             auto centroid = Eigen::Vector2d(xSum / obstacle.verticesCCW().size(), ySum / obstacle.verticesCCW().size());
 
-            // Calculate vector from proposed point to centroid and the slope of the vector
+            // Calculate vector from proposed point to centroid. This gives a direction to the inside of the obstacle.
             Eigen::Vector2d r_CP = centroid - point;
 
-            // Skip the obstacle if it's too far away
-            if (r_CP.norm() > distThreshold)
-            {
-                continue;
-            }
-
-            double mPoint = r_CP[1] / r_CP[0];
+            // Calculate slope of the current position vector
+            double mPoint = point[1] / point[0];
 
             // Determine if vector will intersect a boundary
             for (int ii = 0; ii < obstacle.verticesCCW().size()-1; ii++)
@@ -53,9 +146,20 @@ bool ObstacleChecker::collidesWithPoint(const Eigen::Vector2d &point, bool all, 
 
                 // Calculate slope of boundary
                 double mBound;
-                if (secondVertex[0] - firstVertex[0] == 0)
+                if (secondVertex[0] - firstVertex[0] == 0) // Boundary is vertical
                 {
-                    mBound = 9999;
+                    if (secondVertex[1] - firstVertex[1] > 0) // Boundary goes from bottom to top
+                    {
+                        mBound = 99999;
+                    }
+                    else
+                    {
+                        mBound = -99999;
+                    }
+                }
+                else if (secondVertex[1] - firstVertex[1] == 0) // Boundary is horizontal
+                {
+                    mBound = 0;
                 }
                 else
                 {
@@ -70,7 +174,9 @@ bool ObstacleChecker::collidesWithPoint(const Eigen::Vector2d &point, bool all, 
                                         {mPoint, -1} };
                     Eigen::Vector2d b {mBound*firstVertex[0] - firstVertex[1], mPoint*point[0] - point[1]};
 
-                    Eigen::Vector2d intersect = A.colPivHouseholderQr().solve(b);
+                    Eigen::Vector2d intersectRaw = A.colPivHouseholderQr().solve(b);
+                        // Round to nearest 10-thousandths place
+                    Eigen::Vector2d intersect {round(intersectRaw[0]*10000.0)/10000.0, round(intersectRaw[1]*10000.0)/10000.0};
 
                     // Sort vertices by increasing x and y coordinate
                     Eigen::Vector2d xVertices, yVertices;
@@ -203,31 +309,107 @@ bool ObstacleChecker::collidesWithPoint(const Eigen::Vector2d &point, bool all, 
         return collide;
     }
 }
+*/
 
-Eigen::Vector2d ObstacleChecker::calcPointOnBoundary(const Eigen::Vector2d& point, const Collision &collision)
+/// @brief function that determines which boundary a point is closest to and its propagated point on that boundary
+/// @param point Proposed point to propagate into obstacle
+/// @param collision Collision structure containing the obstacle that was collided with
+/// @param leftTurner Whether the robot is a left turner or not
+/// @return Intersection point on obstacle
+Collision ObstacleChecker::calcPointOnBoundary(const Eigen::Vector2d& point, Collision &collision, bool leftTurner)
 {
     // Extract obstacle and centroid
     amp::Obstacle2D obstacle = collision.obstacle;
-    Eigen::Vector2d centroid = collision.centroid;
 
-    // Extract vertices
-    Eigen::Vector2d firstVertex = collision.firstBoundVertex;
-    Eigen::Vector2d secondVertex = collision.secondBoundVertex;
+    // Choose correct vertices
+    std::vector<Eigen::Vector2d> vertices;
+    if (leftTurner)
+    {
+        vertices = obstacle.verticesCW();
+    }
+    else
+    {
+        vertices = obstacle.verticesCCW();
+    }
 
-    // Calculate vector from proposed point to centroid and the slope of the vector
-    Eigen::Vector2d r_CP = centroid - point;
-    double mPoint = r_CP[1] / r_CP[0];
+    // Loop through all boundaries to find which one is closest to the proposed point
+    Eigen::Vector2d closestIntersect = 9999*point; // Arbitrarily large vector
+    const unsigned long numBoundaries = vertices.size();
+    for (int i = 0; i < numBoundaries; i++)
+    {
+        // Extract vertices
+        Eigen::Vector2d firstVertex = vertices[i];
+        Eigen::Vector2d secondVertex;
+        if (i == numBoundaries - 1)
+        {
+            secondVertex = vertices[0];
+        }
+        else
+        {
+            secondVertex = vertices[i + 1];
+        }
 
-    // Calculate slope of boundary
-    double mBound = (secondVertex[1] - firstVertex[1]) / (secondVertex[0] - firstVertex[0]); // rise / run
+        // Calculate boundary vector
+        Eigen::Vector2d r_B = secondVertex - firstVertex;
 
-    // Determine where the vector would intersect the boundary
-    const Eigen::Matrix2d A {{mBound, -1},
-                        {mPoint, -1} };
-    const Eigen::Vector2d b {mBound*firstVertex[0] - firstVertex[1], mPoint*point[0] - point[1]};
+        // Propagate point onto boundary vector and translate to global frame - this is the vector to the intersection
+        // point on the boundary
+        Eigen::Matrix2d A {{point[0], -r_B[0]}, {point[1], -r_B[1]}};
+        Eigen::Vector2d b {firstVertex[0], firstVertex[1]};
+        Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
 
-    Eigen::Vector2d intersect = A.colPivHouseholderQr().solve(b);
+        Eigen::Vector2d r_I = x[0]*point;
 
-    return intersect;
+        // Calculate vector from proposed intersect to proposed point
+        Eigen::Vector2d r_PI = point - r_I;
+
+        if (r_PI.norm() < (point - closestIntersect).norm())
+        {
+            collision.firstBoundVertex = firstVertex;
+            collision.secondBoundVertex = secondVertex;
+            collision.firstBoundIndex = i;
+            collision.intersect = r_I;
+            closestIntersect = r_I;
+        }
+    }
+
+    return collision;
 }
+
+/// @brief Function that calculates the centroid of a provided obstacle
+/// @param obstacle Obstacle to calculate centroid of
+/// @param leftTurner Whether the robot is a left turner or not
+/// @return Vector to the centroid of the obstacle
+Eigen::Vector2d ObstacleChecker::calcCentroid(const amp::Obstacle2D& obstacle, bool leftTurner)
+{
+    // Choose correct vertices
+    std::vector<Eigen::Vector2d> vertices;
+    if (leftTurner)
+    {
+        vertices = obstacle.verticesCW();
+    }
+    else
+    {
+        vertices = obstacle.verticesCCW();
+    }
+
+    // Calculate centroid
+    double xSum = 0; double ySum = 0;
+    for (int i = 0; i < vertices.size(); i++)
+    {
+        xSum += vertices[i][0];
+        ySum += vertices[i][1];
+    }
+    auto centroid = Eigen::Vector2d(xSum / vertices.size(), ySum / vertices.size());
+
+    return centroid;
+}
+
+std::vector<amp::Obstacle2D> ObstacleChecker::combineObstacles(std::vector<amp::Obstacle2D> &obstacleList)
+{
+    // Obstacles need to be combined if they share vertices or intersect each other. This looks like taking the union of
+    // their primitives
+
+}
+
 

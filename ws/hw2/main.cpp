@@ -36,7 +36,8 @@ int main(int argc, char** argv) {
 
     // Declare your algorithm object 
     Bug1 bug1algo;
-    bug1algo.setDr(0.001); // Set incremental distance in meters
+    bug1algo.setDr(0.1); // Set incremental distance in meters
+    bug1algo.setLeftTurner(true); // Set to be a left turner
     
     {
         // Call your algorithm on the problem
@@ -50,6 +51,7 @@ int main(int argc, char** argv) {
         // Visualize the path and environment
         Visualizer::makeFigure(problem, path);
     }
+
 
     // Let's get crazy and generate a random environment and test your algorithm
     {
