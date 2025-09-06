@@ -16,10 +16,10 @@ int main(int argc, char** argv) {
     /*    Randomly generate the problem     */ 
 
     // Use WO1 from Exercise 2
-    //Problem2D problem = HW2::getWorkspace1();
+    Problem2D problem = HW2::getWorkspace1();
 
     // Use WO2 from Exercise 2
-    Problem2D problem = HW2::getWorkspace2();
+    //Problem2D problem = HW2::getWorkspace2();
 
 
     // Make a random environment spec, edit properties about it such as the number of obstacles
@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 
     // Declare your algorithm object 
     Bug1 bug1algo;
-    bug1algo.setDr(0.01); // Set incremental distance in meters
+    bug1algo.setDr(0.001); // Set incremental distance in meters
     
     {
         // Call your algorithm on the problem

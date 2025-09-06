@@ -10,11 +10,12 @@ class Bug1 : public amp::BugAlgorithm {
         virtual amp::Path2D plan(const amp::Problem2D& problem) override;
 
         // Add any other methods here...
-        void setDr(double newDr) { dr = newDr; } // Setter for incremental distance
-        double getDr() { return dr; } // Getter for incremental distance
+        void setDr(const double newDr) { dr = newDr; } // Setter for incremental distance
+        double getDr() const { return dr; } // Getter for incremental distance
 
     private:
         // Add any member variables here...
         double dr = 0.01; // [m] Incremental distance for propagating bug path
         double epsilon = dr; // [m] Epsilon for determining when we're close to the goal
+        double loopTimeout = 1e4; // Number of loops before the algorithm times out
 };

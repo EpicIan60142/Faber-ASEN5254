@@ -3,7 +3,11 @@ file(GLOB HW_SUBDIRECTORIES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/shared")
     message("Found user-created libraries")
     file(GLOB USER_LIB_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/shared/*.cpp")
-    add_library(user_library STATIC ${USER_LIB_SOURCES})
+    add_library(user_library STATIC ${USER_LIB_SOURCES}
+            shared/ObstacleChecker.h
+            shared/ObstacleChecker.cpp
+            shared/ObstacleChecker.h
+            shared/Collision.h)
     target_link_libraries(user_library PRIVATE
         yaml-cpp
         Eigen3::Eigen
