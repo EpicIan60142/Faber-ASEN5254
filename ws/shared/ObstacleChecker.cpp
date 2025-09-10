@@ -37,9 +37,12 @@ bool ObstacleChecker::evaluatePrimitives(const Eigen::Vector2d &point, bool left
             vertices = obstacle.verticesCCW();
         }
 
+        // Check vertices for duplicates, and remove them if they are duplicate. Already sorted CW or CCW.
+        vertices = removeDuplicateVertices(vertices);
+
         // Loop through all boundaries and calculate their primitives
         const unsigned long numBoundaries = vertices.size();
-        double primitives[numBoundaries]; // Storage array for primitive results
+        std::vector<double> primitives; // Storage array for primitive results
         for (int ii = 0; ii < numBoundaries; ii++)
         {
             // Extract vertices
@@ -75,7 +78,7 @@ bool ObstacleChecker::evaluatePrimitives(const Eigen::Vector2d &point, bool left
             // Evaluate primitive for boundary - if vectors are in the same direction, i.e. the point is inside the
             // obstacle, the dot product will be positive so we force it to be negative to match primitive convention
             double dotProd = r_PI.dot(r_proj);
-            primitives[ii] = -dotProd;
+            primitives.push_back(-dotProd);
 
             // If any primitive is positive, we haven't collided. Thus, terminate the loop
             if (primitives[ii] > 0)
@@ -83,6 +86,24 @@ bool ObstacleChecker::evaluatePrimitives(const Eigen::Vector2d &point, bool left
                 collided = false;
                 break;
             }
+
+            if (primitives[ii] == 0)
+            {
+                if (vertices.size() == 2) // Check if the intersection is valid if the obstacle was a line
+                {
+                    // Sort x and y coordinates in increasing order
+                    Eigen::Vector2d xCoords = (firstVertex[0] <= secondVertex[0]) ? Eigen::Vector2d{firstVertex[0], secondVertex[0]} : Eigen::Vector2d{secondVertex[0], firstVertex[0]};
+                    Eigen::Vector2d yCoords = (firstVertex[1] <= secondVertex[1]) ? Eigen::Vector2d{firstVertex[1], secondVertex[1]} : Eigen::Vector2d{secondVertex[1], firstVertex[1]};
+
+                    // Intersection point isn't valid if it falls outside the two vertices
+                    if (!(r_I[0] >= xCoords[0] && r_I[0] <= xCoords[1] && r_I[1] >= yCoords[0] && r_I[1] <= yCoords[1]))
+                    {
+                        collided = false;
+                        break;
+                    }
+                }
+            }
+
             collided = true;
         }
 
@@ -94,6 +115,7 @@ bool ObstacleChecker::evaluatePrimitives(const Eigen::Vector2d &point, bool left
             newCollision.obstacle = obstacle;
             newCollision.centroid = centroid;
             newCollision.obstacleIndex = i;
+            newCollision.primitives = primitives;
 
             collisionList.push_back(newCollision);
         }
@@ -313,10 +335,11 @@ bool ObstacleChecker::collidesWithPoint(const Eigen::Vector2d &point, bool all, 
 
 /// @brief function that determines which boundary a point is closest to and its propagated point on that boundary
 /// @param point Proposed point to propagate into obstacle
+/// @param lastPoint The point before the proposed point in the path sequence
 /// @param collision Collision structure containing the obstacle that was collided with
 /// @param leftTurner Whether the robot is a left turner or not
-/// @return Intersection point on obstacle
-Collision ObstacleChecker::calcPointOnBoundary(const Eigen::Vector2d& point, Collision &collision, bool leftTurner)
+/// @return Collision object with intersection point and vertices corresponding to the boundary hit
+Collision ObstacleChecker::calcPointOnBoundary(const Eigen::Vector2d& point, const Eigen::Vector2d lastPoint, Collision &collision, bool leftTurner)
 {
     // Extract obstacle and centroid
     amp::Obstacle2D obstacle = collision.obstacle;
@@ -331,6 +354,9 @@ Collision ObstacleChecker::calcPointOnBoundary(const Eigen::Vector2d& point, Col
     {
         vertices = obstacle.verticesCCW();
     }
+
+    // Remove duplicate vertices
+    vertices = removeDuplicateVertices(vertices);
 
     // Loop through all boundaries to find which one is closest to the proposed point
     Eigen::Vector2d closestIntersect = 9999*point; // Arbitrarily large vector
@@ -352,13 +378,16 @@ Collision ObstacleChecker::calcPointOnBoundary(const Eigen::Vector2d& point, Col
         // Calculate boundary vector
         Eigen::Vector2d r_B = secondVertex - firstVertex;
 
+        // Calculate direction of propagation
+        Eigen::Vector2d r_prop = point - lastPoint;
+
         // Propagate point onto boundary vector and translate to global frame - this is the vector to the intersection
         // point on the boundary
-        Eigen::Matrix2d A {{point[0], -r_B[0]}, {point[1], -r_B[1]}};
-        Eigen::Vector2d b {firstVertex[0], firstVertex[1]};
+        Eigen::Matrix2d A {{r_prop[0], -r_B[0]}, {r_prop[1], -r_B[1]}};
+        Eigen::Vector2d b {firstVertex[0] - lastPoint[0], firstVertex[1] - lastPoint[1]};
         Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
 
-        Eigen::Vector2d r_I = x[0]*point;
+        Eigen::Vector2d r_I = x[0]*r_prop + lastPoint;
 
         // Calculate vector from proposed intersect to proposed point
         Eigen::Vector2d r_PI = point - r_I;
@@ -393,6 +422,9 @@ Eigen::Vector2d ObstacleChecker::calcCentroid(const amp::Obstacle2D& obstacle, b
         vertices = obstacle.verticesCCW();
     }
 
+    // Remove duplicate vertices
+    vertices = removeDuplicateVertices(vertices);
+
     // Calculate centroid
     double xSum = 0; double ySum = 0;
     for (int i = 0; i < vertices.size(); i++)
@@ -405,11 +437,28 @@ Eigen::Vector2d ObstacleChecker::calcCentroid(const amp::Obstacle2D& obstacle, b
     return centroid;
 }
 
-std::vector<amp::Obstacle2D> ObstacleChecker::combineObstacles(std::vector<amp::Obstacle2D> &obstacleList)
+std::vector<Eigen::Vector2d> ObstacleChecker::removeDuplicateVertices(const std::vector<Eigen::Vector2d> &vertices)
 {
-    // Obstacles need to be combined if they share vertices or intersect each other. This looks like taking the union of
-    // their primitives
+    std::vector<int> duplicateIdx;
+    for (int ii = 0; ii < vertices.size()-1; ii++)
+    {
+        if (vertices[ii] == vertices[ii+1])
+        {
+            duplicateIdx.push_back(ii+1);
+        }
+    }
 
+    std::vector<Eigen::Vector2d> newVertices = vertices;
+    if (!duplicateIdx.empty() > 0)
+    {
+        for (unsigned long ii = 0; ii < duplicateIdx.size(); ii++)
+        {
+            newVertices.erase(newVertices.begin() + duplicateIdx[ii]);
+        };
+    }
+
+    return newVertices;
 }
+
 
 

@@ -11,6 +11,7 @@ class Bug1 : public amp::BugAlgorithm {
 
         // Cicrumnavigation algorithm
 
+
         // Getter and setter for incremental distance
         double getDr() const { return dr; };
         void setDr(const double newDr) { dr = newDr; epsilon = newDr; };
@@ -23,6 +24,6 @@ class Bug1 : public amp::BugAlgorithm {
         // Add any member variables here...
         double dr = 0.01; // [m] Incremental distance for propagating bug path
         double epsilon = dr; // [m] Epsilon for determining when we're close to the goal
-        bool leftTurner = true; // Whether the robot is a left or right turner
-        double loopTimeout = 1e4; // Number of loops before the algorithm times out
+        bool leftTurner; // Whether the robot is a left or right turner
+        double loopTimeout = 1e2; // Number of main loops before the algorithm times out
 };

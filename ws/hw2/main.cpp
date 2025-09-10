@@ -21,7 +21,6 @@ int main(int argc, char** argv) {
     // Use WO2 from Exercise 2
     //Problem2D problem = HW2::getWorkspace2();
 
-
     // Make a random environment spec, edit properties about it such as the number of obstacles
     /*
     Random2DEnvironmentSpecification spec;

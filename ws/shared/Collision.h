@@ -16,6 +16,7 @@ struct Collision
     Eigen::Vector2d intersect; // Intersection point
     Eigen::Vector2d firstBoundVertex; // First vertex of the boundary collided with
     Eigen::Vector2d secondBoundVertex; // Second vertex of the boundary collided with
+    std::vector<double> primitives; // Array of primitives for the obstacle
     int firstBoundIndex; // Index of first collision boundary vertex
     int obstacleIndex; // Index of the collided obstacle
 };

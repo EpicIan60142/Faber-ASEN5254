@@ -9,7 +9,7 @@
 #include "Collision.h"
 
 // @brief Obstacle checker class for checking whether points collide with a set of obstacles
-class ObstacleChecker : amp::Obstacle2D
+class ObstacleChecker
 {
     public:
             // Default constructor
@@ -26,15 +26,16 @@ class ObstacleChecker : amp::Obstacle2D
         bool collidesWithPoint(const Eigen::Vector2d &point, bool all = true, int obstacleIndex = 0);
         */
 
-            // Projects the proposed point onto the obstacle's closest boundary
-        Collision calcPointOnBoundary(const Eigen::Vector2d &point, Collision &collision, bool leftTurner);
+            // Propagates the proposed point onto the obstacle's closest boundary
+        Collision calcPointOnBoundary(const Eigen::Vector2d &point, const Eigen::Vector2d lastPoint, Collision &collision, bool leftTurner);
+
+            //
 
             // Calculates the centroid of an obstacle
         Eigen::Vector2d calcCentroid(const amp::Obstacle2D &obstacle, bool leftTurner);
 
-            // Combines obstacles that share vertices or take up the same space. In other words, combines convex
-            // obstacles into nonconvex obstacles as needed
-        std::vector<amp::Obstacle2D> combineObstacles(std::vector<amp::Obstacle2D> &obstacleList);
+            // Removes duplicate vertices from an obstacle
+        std::vector<Eigen::Vector2d> removeDuplicateVertices(const std::vector<Eigen::Vector2d> &vertices);
 
             // Getter and setter for list of obstacles
         std::vector<amp::Obstacle2D> getObstacles() { return obstacleList; };
