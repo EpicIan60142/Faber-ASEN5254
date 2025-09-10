@@ -238,7 +238,7 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
 
                 innerCount++;
 
-            } while ((pathCircumNav.waypoints.back() - q_first).norm() > epsilon && innerCount <= 999);
+            } while ((pathCircumNav.waypoints.back() - q_first).norm() > 3*epsilon && innerCount <= 999);
 
             // Add q_first as the last point in the circumnavigation path
             //pathCircumNav.waypoints.push_back(q_first);
@@ -260,8 +260,11 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
             // Append circumnavigated path in progress to overall path
             path.waypoints.insert(path.waypoints.end(), pathCircumNav.waypoints.begin(), pathCircumNav.waypoints.end());
 
-            // Reset collided boolean
+            // Reset collided booleans and update pointing vectors
             collided = false;
+
+            r_Gq = problem.q_goal - path.waypoints.back(); // Distance vector from current position to goal
+            rHat_Gq = r_Gq.normalized(); // Distance unit vector to goal
         }
 
         loopCount++;

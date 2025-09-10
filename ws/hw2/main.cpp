@@ -1,5 +1,6 @@
 // This includes all of the necessary header files in the toolbox
 #include "AMPCore.h"
+#include "tools/Environment.h"
 
 // Include the correct homework header
 #include "hw/HW2.h"
@@ -16,43 +17,74 @@ int main(int argc, char** argv) {
     /*    Randomly generate the problem     */ 
 
     // Use WO1 from Exercise 2
-    Problem2D problem = HW2::getWorkspace1();
+    Problem2D problem1 = HW2::getWorkspace1();
 
     // Use WO2 from Exercise 2
-    //Problem2D problem = HW2::getWorkspace2();
+    Problem2D problem2 = HW2::getWorkspace2();
 
     // Make a random environment spec, edit properties about it such as the number of obstacles
-    /*
     Random2DEnvironmentSpecification spec;
     spec.max_obstacle_region_radius = 5.0;
-    spec.n_obstacles = 2;
+    spec.n_obstacles = 200;
     spec.path_clearance = 0.01;
-    spec.d_sep = 0.01;
+    spec.d_sep = 0.001;
 
     //Randomly generate the environment;
-    Problem2D problem = EnvironmentTools::generateRandom(spec); // Random environment
-    */
+    Problem2D problemRand = EnvironmentTools::generateRandomPointAgentProblem(spec); // Random environment
 
     // Declare your algorithm object 
     Bug1 bug1algo;
     bug1algo.setDr(0.1); // Set incremental distance in meters
     bug1algo.setLeftTurner(true); // Set to be a left turner
-    
+
+    // Workspace 1
     {
         // Call your algorithm on the problem
-        amp::Path2D path = bug1algo.plan(problem);
+        amp::Path2D path = bug1algo.plan(problem1);
 
         // Check your path to make sure that it does not collide with the environment 
-        bool success = HW2::check(path, problem);
+        bool success = HW2::check(path, problem1);
 
         LOG("Found valid solution to workspace 1: " << (success ? "Yes!" : "No :("));
 
+        LOG("path length: " << path.length());
+
         // Visualize the path and environment
-        Visualizer::makeFigure(problem, path);
+        Visualizer::makeFigure(problem1, path);
     }
 
+    // Workspace 2
+    {
+        // Call your algorithm on the problem
+        amp::Path2D path = bug1algo.plan(problem2);
 
-    /*
+        // Check your path to make sure that it does not collide with the environment
+        bool success = HW2::check(path, problem2);
+
+        LOG("Found valid solution to workspace 2: " << (success ? "Yes!" : "No :("));
+
+        LOG("path length: " << path.length());
+
+        // Visualize the path and environment
+        Visualizer::makeFigure(problem2, path);
+    }
+
+    // Custom Random
+    {
+        // Call your algorithm on the problem
+        amp::Path2D path = bug1algo.plan(problemRand);
+
+        // Check your path to make sure that it does not collide with the environment
+        bool success = HW2::check(path, problemRand);
+
+        LOG("Found valid solution to custom random: " << (success ? "Yes!" : "No :("));
+
+        LOG("path length: " << path.length());
+
+        // Visualize the path and environment
+        Visualizer::makeFigure(problemRand, path);
+    }
+
     // Let's get crazy and generate a random environment and test your algorithm
     {
         amp::Path2D path; // Make empty path, problem, and collision points, as they will be created by generateAndCheck()
@@ -66,7 +98,7 @@ int main(int argc, char** argv) {
         // Visualize the path environment, and any collision points with obstacles
         Visualizer::makeFigure(random_prob, path, collision_points);
     }
-    */
+
 
     Visualizer::saveFigures(true, "hw2_figs");
 
