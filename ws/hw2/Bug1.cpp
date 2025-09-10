@@ -37,8 +37,6 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
     Eigen::Vector2d q_first; // First path point encountered on an obstacle
     Eigen::Vector2d q_closest(9e9, 9e9); // Closest path point to the goal after circumnavigating an obstacle
     bool firstObstacle; // Boolean for resetting q_first
-    amp::Path2D pathCircumNav; // Path for circumnavigating obstacles
-
 
     // Run algorithm
     while (keepPlanning && loopCount < loopTimeout)
@@ -245,11 +243,14 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
                         q_closest = pathCircumNav.waypoints.back();
                         idxClosest = pathCircumNav.waypoints.size();
                     }
+
+                    std::cout << "diff: " << (candidatePoint - q_first).norm() << std::endl;
                 } while ((candidatePoint - q_first).norm() > epsilon);
 
                 if ((candidatePoint - q_first).norm() <= epsilon)
                 {
                     pathCircumNav.waypoints.push_back(q_first);
+                    secondCollision = false;
                 }
             }
 
@@ -269,14 +270,16 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
                     break;
                 }
 
-                // Update the vector to the goal
-                r_Gq = problem.q_goal - path.waypoints.back(); // Distance vector from current position to goal
-                rHat_Gq = r_Gq/r_Gq.norm(); // Distance unit vector to goal
-
                 collided = false;
             }
 
-            // Append circumnavigated path in progress to path
+            // Update the vector to the goal
+            r_Gq = problem.q_goal - path.waypoints.back(); // Distance vector from current position to goal
+            rHat_Gq = r_Gq/r_Gq.norm(); // Distance unit vector to goal
+
+            //collided = false;
+
+            // Append circumnavigated path in progress to overall path
             path.waypoints.insert(path.waypoints.end(), pathCircumNav.waypoints.begin(), pathCircumNav.waypoints.end());
         }
 
@@ -284,7 +287,7 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
     }
 
     // Add final point to path
-    //path.waypoints.push_back(problem.q_goal);
+    path.waypoints.push_back(problem.q_goal);
 
     return path;
 }
