@@ -34,9 +34,6 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
     bool keepPlanning = true; // Overall algorithm loop control
     bool collided = false; // Boolean determining whether we move toward the goal or circumnavigate
     double loopCount = 0; // Loop counter for early termination
-    Eigen::Vector2d q_first; // First path point encountered on an obstacle
-    Eigen::Vector2d q_closest(9e9, 9e9); // Closest path point to the goal after circumnavigating an obstacle
-    bool firstObstacle; // Boolean for resetting q_first
 
     // Run algorithm
     while (keepPlanning && loopCount < loopTimeout)
@@ -44,8 +41,6 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
         // Move toward goal
         while (r_Gq.norm() > epsilon && !collided)
         {
-            firstObstacle = true;
-
             // Propose a candidate point closer to the goal
             candidatePoint = path.waypoints.back() + rHat_Gq * dr;
 
@@ -79,211 +74,195 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
         // Circumnavigate
         if (keepPlanning)
         {
-            // Boolean for tracking collisions when circumnavigating
-            bool secondCollision = false;
-
-            // We collided with something, need to circumnavigate it
-            // Pull out calculated collisions
-            obsCheck.evaluatePrimitives(candidatePoint, leftTurner);
-            std::vector<Collision> collisions = obsCheck.getCollisions();
-
-            // Find intersection points closest to the point
-            obsCheck.evaluatePrimitives(candidatePoint, leftTurner);
-            for (int i = 0; i < collisions.size(); i++)
-            {
-                collisions[i] = obsCheck.calcPointOnBoundary(candidatePoint, path.waypoints.back(), collisions[i], leftTurner);
-            }
-
-            // Define a new path for circumnavigation
             amp::Path2D pathCircumNav;
+            Eigen::Vector2d q_first;
+            Eigen::Vector2d q_closest(9e9, 9e9);
+            bool firstPointAssigned = false;
+            bool breakLoop;
+            unsigned long idxClosest;
 
-            // Add a point just behind the intersection point as the first point in the circumnavigation path
-            Eigen::Vector2d u_intersect = collisions[0].intersect - path.waypoints.back();
-            u_intersect = u_intersect/u_intersect.norm();
-
-            candidatePoint = collisions[0].intersect - dr*dr*u_intersect;
-            if (!obsCheck.evaluatePrimitives(candidatePoint, leftTurner))
+            do
             {
-                pathCircumNav.waypoints.push_back(candidatePoint);
-            }
-            else
-            {
-                pathCircumNav.waypoints.push_back(path.waypoints.back());
-            }
+                // Reset loop control variable
+                breakLoop = false;
 
-            // Keep track of the first point we encountered
-            if (firstObstacle)
-            {
-                q_first = pathCircumNav.waypoints.back();
-                firstObstacle = false;
-            }
+                // Figure out what obstacle we collided with
+                obsCheck.evaluatePrimitives(candidatePoint, leftTurner);
+                std::vector<Collision> collisions = obsCheck.getCollisions();
 
-
-            // Sort vertices depending on the boundary that was intersected
-            std::vector<Eigen::Vector2d> vertices;
-            if (leftTurner)
-            {
-                vertices = collisions[0].obstacle.verticesCW();
-
-                // Sort vertices according to where the intersection occurred
-                int firstBoundIdx = collisions[0].firstBoundIndex;
-
-                for (int i = 0; i < vertices.size(); i++)
+                // Only deal with the first collision for now, find the intersection point closest to the candidate point
+                if (!firstPointAssigned) // If first loop, use the constructed path
                 {
-                    vertices[i] = collisions[0].obstacle.verticesCW()[(firstBoundIdx + i)%vertices.size()];
+                    collisions[0] = obsCheck.calcPointOnBoundary(candidatePoint, path.waypoints.back(), collisions[0], leftTurner);
+                }
+                else // If multiple loops in, use circumnavigated path
+                {
+                    collisions[0] = obsCheck.calcPointOnBoundary(candidatePoint, pathCircumNav.waypoints.back(), collisions[0], leftTurner);
                 }
 
-            }
-            else
-            {
-                vertices = collisions[0].obstacle.verticesCCW();
-
-                // Sort vertices according to where the intersection occurred
-                int firstBoundIdx = collisions[0].firstBoundIndex;
-
-                for (int i = 0; i < vertices.size(); i++)
+                // Propose a point just behind the intersection point to start circumnavigation
+                Eigen::Vector2d u_intersect;
+                if (!firstPointAssigned)
                 {
-                    vertices[i] = collisions[0].obstacle.verticesCCW()[(firstBoundIdx + i)%vertices.size()];
-                }
-            }
-
-            // Check vertices for duplicates, and remove them if they are duplicate. Already sorted CW or CCW.
-            vertices = obsCheck.removeDuplicateVertices(vertices);
-
-            // Circumnavigate the obstacle until we get back to the first point
-            // q_closest = pathCircumNav.waypoints.back();
-            unsigned long idxClosest = pathCircumNav.waypoints.size();
-            // Loop over each boundary
-            for (int i = 0; i < vertices.size(); i++)
-            {
-                Eigen::Vector2d firstVertex = vertices[i];
-                Eigen::Vector2d secondVertex;
-                if (i == vertices.size() - 1)
-                {
-                    secondVertex = vertices[0];
+                    u_intersect = (collisions[0].intersect - path.waypoints.back()).normalized();
                 }
                 else
                 {
-                    secondVertex = vertices[i + 1];
+                    u_intersect = (collisions[0].intersect - pathCircumNav.waypoints.back()).normalized();
                 }
 
-                // Determine boundary tangent vector
-                Eigen::Vector2d rHat_B = (secondVertex - firstVertex).normalized();
+                candidatePoint = collisions[0].intersect - dr*dr*u_intersect;
 
-                // Add points following the boundary until we hit the second vertex
-                candidatePoint = pathCircumNav.waypoints.back();
-                while ((candidatePoint - secondVertex).norm() > epsilon)
+                // Add the point to the circumnavigation path and assign it as the start point if not already done
+                pathCircumNav.waypoints.push_back(candidatePoint);
+                if (!firstPointAssigned)
                 {
-                    candidatePoint = pathCircumNav.waypoints.back() + rHat_B * dr;
+                    q_first = candidatePoint;
+                    firstPointAssigned = true;
+                }
+
+                // Sort vertices according to the boundary the candidate point intersected
+                std::vector<Eigen::Vector2d> vertices;
+                if (leftTurner)
+                {
+                    // If turning left, want to follow vertices in clockwise direction
+                    vertices = collisions[0].obstacle.verticesCW();
+
+                    // Extract what the first vertex of the intersected boundary is
+                    int firstVertexIdx = collisions[0].firstBoundIndex;
+
+                    // Sort vertices in order of CW traversal
+                    for (int i = 0; i < vertices.size(); i++)
+                    {
+                        vertices[i] = collisions[0].obstacle.verticesCW()[(firstVertexIdx + i) % vertices.size()];
+                    }
+
+                }
+                else
+                {
+                    // If turning right, want to follow vertices in counter clockwise direction
+                    vertices = collisions[0].obstacle.verticesCCW();
+
+                    // Extract what the first vertex of the intersected boundary is
+                    int firstVertexIdx = collisions[0].firstBoundIndex;
+
+                    // Sort vertices in order of CCW traversal
+                    for (int i = 0; i < vertices.size(); i++)
+                    {
+                        vertices[i] = collisions[0].obstacle.verticesCCW()[(firstVertexIdx + i) % vertices.size()];
+                    }
+                }
+
+                // Check vertices for duplicates and remove them if they exist
+                vertices = obsCheck.removeDuplicateVertices(vertices);
+
+                // Attempt to visit each vertex in order, if we hit another obstacle or q_first then restart the loop
+                for (int i = 0; i < vertices.size(); i++)
+                {
+                    Eigen::Vector2d firstVertex = vertices[i];
+                    Eigen::Vector2d secondVertex;
+                    if (i == vertices.size() - 1)
+                    {
+                        secondVertex = vertices[0];
+                    }
+                    else
+                    {
+                        secondVertex = vertices[i + 1];
+                    }
+
+                    // Determine boundary unit vector
+                    Eigen::Vector2d rHat_B = (secondVertex - firstVertex).normalized();
+
+                    // Propose candidate point following the boundary towards the second vertex
+                    candidatePoint = pathCircumNav.waypoints.back();
+                    while ((candidatePoint - secondVertex).norm() > epsilon)
+                    {
+                        // Add a small distance along the boundary unit vector
+                        candidatePoint = pathCircumNav.waypoints.back() + rHat_B * dr;
+
+                        if (obsCheck.evaluatePrimitives(candidatePoint, leftTurner))
+                        {
+                            breakLoop = true;
+                            break;
+                        }
+
+                        pathCircumNav.waypoints.push_back(candidatePoint);
+
+                        if ((pathCircumNav.waypoints.back() - problem.q_goal).norm() < (q_closest - problem.q_goal).norm())
+                        {
+                            q_closest = pathCircumNav.waypoints.back();
+                            idxClosest = pathCircumNav.waypoints.size();
+                        }
+                    }
+
+
+                    // Break the for loop if we need to look at a new obstacle
+                    if (breakLoop)
+                    {
+                        break;
+                    }
+
+                    // Add a buffer point near the second vertex before moving on to the next boundary
+                    Eigen::Vector2d u_vertex = (secondVertex - collisions[0].centroid).normalized();
+
+                    candidatePoint = secondVertex + dr*dr*u_vertex;
 
                     if (obsCheck.evaluatePrimitives(candidatePoint, leftTurner))
                     {
-                        secondCollision = true;
+                        breakLoop = true;
                         break;
                     }
 
                     pathCircumNav.waypoints.push_back(candidatePoint);
-
-                    if ((pathCircumNav.waypoints.back() - problem.q_goal).norm() < (q_closest - problem.q_goal).norm())
-                    {
-                        q_closest = pathCircumNav.waypoints.back();
-                        idxClosest = pathCircumNav.waypoints.size();
-                    }
                 }
 
-                if (!secondCollision)
+                if (!breakLoop)
                 {
-                    Eigen::Vector2d u_vertex = secondVertex - collisions[0].centroid;
-                    u_vertex = u_vertex/u_vertex.norm();
+                    // Move back towards q_first once all boundaries have been traversed
+                    Eigen::Vector2d u_qFirst = (q_first - pathCircumNav.waypoints.back()).normalized();
 
-                    candidatePoint = secondVertex + dr*dr*u_vertex;
-                    if (!obsCheck.evaluatePrimitives(candidatePoint, leftTurner))
+                    candidatePoint = pathCircumNav.waypoints.back();
+                    while ((candidatePoint - q_first).norm() > epsilon)
                     {
-                        pathCircumNav.waypoints.push_back(secondVertex + dr*dr*u_vertex);
-                    }
-                    else
-                    {
-                        secondCollision = true;
-                        break;
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
+                        candidatePoint = pathCircumNav.waypoints.back() +  dr*u_qFirst;
 
-            // Finish out traversing the first boundary only if the obstacle isn't a line and we didn't collide again
-            if (vertices.size() > 2 && !secondCollision)
-            {
-                // Move along first boundary until we hit the first point
-                Eigen::Vector2d firstVertex = vertices[0];
-                Eigen::Vector2d secondVertex = vertices[1];
+                        if (obsCheck.evaluatePrimitives(candidatePoint, leftTurner))
+                        {
+                            break;
+                        }
 
-                // Determine boundary tangent vector
-                Eigen::Vector2d rHat_B = (secondVertex - firstVertex).normalized();
-
-                // Add points following the boundary until we hit the first point
-                do
-                {
-                    candidatePoint = pathCircumNav.waypoints.back() + rHat_B * dr;
-
-                    if (!obsCheck.evaluatePrimitives(candidatePoint, leftTurner))
-                    {
                         pathCircumNav.waypoints.push_back(candidatePoint);
                     }
-                    else
-                    {
-                        secondCollision = true;
-                        break;
-                    }
-
-                    if ((pathCircumNav.waypoints.back() - problem.q_goal).norm() < (q_closest - problem.q_goal).norm())
-                    {
-                        q_closest = pathCircumNav.waypoints.back();
-                        idxClosest = pathCircumNav.waypoints.size();
-                    }
-
-                    std::cout << "diff: " << (candidatePoint - q_first).norm() << std::endl;
-                } while ((candidatePoint - q_first).norm() > epsilon);
-
-                if ((candidatePoint - q_first).norm() <= epsilon)
-                {
-                    pathCircumNav.waypoints.push_back(q_first);
-                    secondCollision = false;
                 }
-            }
 
-            if (!secondCollision)
+            } while ((pathCircumNav.waypoints.back() - q_first).norm() > epsilon );
+
+            // Add q_first as the last point in the circumnavigation path
+            pathCircumNav.waypoints.push_back(q_first);
+
+            // Move back towards the closest point if it's different from q_first
+            if ((q_first - q_closest).norm() > epsilon)
             {
-                // Go back to the closest point if the distance changed
-                if ((q_first - q_closest).norm() > epsilon)
+                for (int i = pathCircumNav.waypoints.size()-1; i >= idxClosest; i--)
                 {
-                    for (int i = pathCircumNav.waypoints.size()-1; i >= idxClosest; i--)
-                    {
-                        pathCircumNav.waypoints.push_back(pathCircumNav.waypoints[i]);
-                    }
+                    pathCircumNav.waypoints.push_back(pathCircumNav.waypoints[i]);
                 }
-                else
-                {
-                    keepPlanning = false;
-                    break;
-                }
-
-                collided = false;
             }
-
-            // Update the vector to the goal
-            r_Gq = problem.q_goal - path.waypoints.back(); // Distance vector from current position to goal
-            rHat_Gq = r_Gq/r_Gq.norm(); // Distance unit vector to goal
-
-            //collided = false;
+            else
+            {
+                keepPlanning = false;
+                break;
+            }
 
             // Append circumnavigated path in progress to overall path
             path.waypoints.insert(path.waypoints.end(), pathCircumNav.waypoints.begin(), pathCircumNav.waypoints.end());
+
+            // Reset collided boolean
+            collided = false;
         }
 
         loopCount++;
+        std::cout << "Loop count: " << loopCount << std::endl;
     }
 
     // Add final point to path

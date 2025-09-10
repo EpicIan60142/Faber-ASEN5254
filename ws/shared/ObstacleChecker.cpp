@@ -389,10 +389,20 @@ Collision ObstacleChecker::calcPointOnBoundary(const Eigen::Vector2d& point, con
 
         Eigen::Vector2d r_I = x[0]*r_prop + lastPoint;
 
+        // Sort x and y coordinates in increasing order
+        Eigen::Vector2d xCoords = (firstVertex[0] <= secondVertex[0]) ? Eigen::Vector2d{firstVertex[0], secondVertex[0]} : Eigen::Vector2d{secondVertex[0], firstVertex[0]};
+        Eigen::Vector2d yCoords = (firstVertex[1] <= secondVertex[1]) ? Eigen::Vector2d{firstVertex[1], secondVertex[1]} : Eigen::Vector2d{secondVertex[1], firstVertex[1]};
+
+        // Intersection point isn't valid if it falls outside the two vertices
+        if (!(r_I[0] >= xCoords[0] && r_I[0] <= xCoords[1] && r_I[1] >= yCoords[0] && r_I[1] <= yCoords[1]))
+        {
+            continue;
+        }
+
         // Calculate vector from proposed intersect to proposed point
         Eigen::Vector2d r_PI = point - r_I;
 
-        if (r_PI.norm() < (point - closestIntersect).norm())
+        if (r_PI.norm() <= (point - closestIntersect).norm())
         {
             collision.firstBoundVertex = firstVertex;
             collision.secondBoundVertex = secondVertex;
