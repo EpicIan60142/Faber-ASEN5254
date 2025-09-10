@@ -34,6 +34,7 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
     bool keepPlanning = true; // Overall algorithm loop control
     bool collided = false; // Boolean determining whether we move toward the goal or circumnavigate
     double loopCount = 0; // Loop counter for early termination
+    double innerCount = 0;
 
     // Run algorithm
     while (keepPlanning && loopCount < loopTimeout)
@@ -207,7 +208,7 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
 
                     candidatePoint = secondVertex + dr*dr*u_vertex;
 
-                    if (obsCheck.evaluatePrimitives(candidatePoint, leftTurner))
+                    if (obsCheck.evaluatePrimitives(candidatePoint, leftTurner) && (candidatePoint - q_first).norm() > epsilon)
                     {
                         breakLoop = true;
                         break;
@@ -224,7 +225,7 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
                     candidatePoint = pathCircumNav.waypoints.back();
                     while ((candidatePoint - q_first).norm() > epsilon)
                     {
-                        candidatePoint = pathCircumNav.waypoints.back() +  dr*u_qFirst;
+                        candidatePoint = pathCircumNav.waypoints.back() + dr*u_qFirst;
 
                         if (obsCheck.evaluatePrimitives(candidatePoint, leftTurner))
                         {
@@ -235,10 +236,12 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
                     }
                 }
 
-            } while ((pathCircumNav.waypoints.back() - q_first).norm() > epsilon );
+                innerCount++;
+
+            } while ((pathCircumNav.waypoints.back() - q_first).norm() > epsilon && innerCount <= 999);
 
             // Add q_first as the last point in the circumnavigation path
-            pathCircumNav.waypoints.push_back(q_first);
+            //pathCircumNav.waypoints.push_back(q_first);
 
             // Move back towards the closest point if it's different from q_first
             if ((q_first - q_closest).norm() > epsilon)
@@ -262,7 +265,7 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
         }
 
         loopCount++;
-        std::cout << "Loop count: " << loopCount << std::endl;
+        //std::cout << "Loop count: " << loopCount << std::endl;
     }
 
     // Add final point to path
