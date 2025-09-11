@@ -77,19 +77,26 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
         {
             amp::Path2D pathCircumNav;
             Eigen::Vector2d q_first;
-            Eigen::Vector2d q_closest(9e9, 9e9);
+            Eigen::Vector2d q_closest = path.waypoints.back();
             bool firstPointAssigned = false;
             bool breakLoop;
-            unsigned long idxClosest;
+            bool atStart = false;
+            unsigned long idxClosest = 0;
 
+            // Circumnavigate obstacle until we return to the intersection point
             do
             {
-                // Reset loop control variable
+                // Reset loop control variables
                 breakLoop = false;
 
                 // Figure out what obstacle we collided with
                 obsCheck.evaluatePrimitives(candidatePoint, leftTurner);
                 std::vector<Collision> collisions = obsCheck.getCollisions();
+
+                if (collisions.empty())
+                {
+                    break;
+                }
 
                 // Only deal with the first collision for now, find the intersection point closest to the candidate point
                 if (!firstPointAssigned) // If first loop, use the constructed path
@@ -115,6 +122,11 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
                 candidatePoint = collisions[0].intersect - dr*dr*u_intersect;
 
                 // Add the point to the circumnavigation path and assign it as the start point if not already done
+                if (obsCheck.evaluatePrimitives(candidatePoint, leftTurner))
+                {
+                    break;
+                }
+
                 pathCircumNav.waypoints.push_back(candidatePoint);
                 if (!firstPointAssigned)
                 {
@@ -187,6 +199,11 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
                             break;
                         }
 
+                        if ((candidatePoint - q_first).norm() < epsilon && pathCircumNav.waypoints.size() > 1)
+                        {
+                            atStart = true;
+                        }
+
                         pathCircumNav.waypoints.push_back(candidatePoint);
 
                         if ((pathCircumNav.waypoints.back() - problem.q_goal).norm() < (q_closest - problem.q_goal).norm())
@@ -197,8 +214,8 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
                     }
 
 
-                    // Break the for loop if we need to look at a new obstacle
-                    if (breakLoop)
+                    // Break the for loop if we need to look at a new obstacle or we are at the start point
+                    if (breakLoop || atStart)
                     {
                         break;
                     }
@@ -238,13 +255,13 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
 
                 innerCount++;
 
-            } while ((pathCircumNav.waypoints.back() - q_first).norm() > 3*epsilon && innerCount <= 999);
+            } while (innerCount <= 999 && !atStart);
 
             // Add q_first as the last point in the circumnavigation path
             //pathCircumNav.waypoints.push_back(q_first);
 
             // Move back towards the closest point if it's different from q_first
-            if ((q_first - q_closest).norm() > epsilon)
+            if ((q_first - q_closest).norm() > epsilon && pathCircumNav.waypoints.size() > 1 && q_closest != path.waypoints.back())
             {
                 for (int i = pathCircumNav.waypoints.size()-1; i >= idxClosest; i--)
                 {
@@ -265,6 +282,7 @@ amp::Path2D Bug1::plan(const amp::Problem2D& problem)
 
             r_Gq = problem.q_goal - path.waypoints.back(); // Distance vector from current position to goal
             rHat_Gq = r_Gq.normalized(); // Distance unit vector to goal
+
         }
 
         loopCount++;

@@ -22,6 +22,7 @@ int main(int argc, char** argv) {
     // Use WO2 from Exercise 2
     Problem2D problem2 = HW2::getWorkspace2();
 
+    /*
     // Make a random environment spec, edit properties about it such as the number of obstacles
     Random2DEnvironmentSpecification spec;
     spec.max_obstacle_region_radius = 5.0;
@@ -31,10 +32,11 @@ int main(int argc, char** argv) {
 
     //Randomly generate the environment;
     Problem2D problemRand = EnvironmentTools::generateRandomPointAgentProblem(spec); // Random environment
+    */
 
     // Declare your algorithm object 
     Bug1 bug1algo;
-    bug1algo.setDr(0.1); // Set incremental distance in meters
+    bug1algo.setDr(0.05); // Set incremental distance in meters
     bug1algo.setLeftTurner(true); // Set to be a left turner
 
     // Workspace 1
@@ -67,22 +69,6 @@ int main(int argc, char** argv) {
 
         // Visualize the path and environment
         Visualizer::makeFigure(problem2, path);
-    }
-
-    // Custom Random
-    {
-        // Call your algorithm on the problem
-        amp::Path2D path = bug1algo.plan(problemRand);
-
-        // Check your path to make sure that it does not collide with the environment
-        bool success = HW2::check(path, problemRand);
-
-        LOG("Found valid solution to custom random: " << (success ? "Yes!" : "No :("));
-
-        LOG("path length: " << path.length());
-
-        // Visualize the path and environment
-        Visualizer::makeFigure(problemRand, path);
     }
 
     // Let's get crazy and generate a random environment and test your algorithm
