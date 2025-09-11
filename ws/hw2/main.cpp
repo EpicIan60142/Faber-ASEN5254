@@ -7,6 +7,7 @@
 
 // Include any custom headers you created in your workspace
 #include "Bug1.h"
+#include "Bug2.h"
 
 using namespace amp;
 
@@ -34,10 +35,14 @@ int main(int argc, char** argv) {
     Problem2D problemRand = EnvironmentTools::generateRandomPointAgentProblem(spec); // Random environment
     */
 
-    // Declare your algorithm object 
+    // Declare your algorithm objects
     Bug1 bug1algo;
     bug1algo.setDr(0.05); // Set incremental distance in meters
     bug1algo.setLeftTurner(true); // Set to be a left turner
+
+    Bug2 bug2algo;
+    bug2algo.setDr(0.05); // Set incremental distance in meters
+    bug2algo.setLeftTurner(true); // Set to be a left turner
 
     // Workspace 1
     {

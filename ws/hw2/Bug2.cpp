@@ -1,9 +1,9 @@
-#include "Bug1.h"
+#include "Bug2.h"
 #include "tools/Obstacle.h"
 #include "ObstacleChecker.h"
 
 // Implement your methods in the `.cpp` file, for example:
-amp::Path2D Bug1::plan(const amp::Problem2D& problem)
+amp::Path2D Bug2::plan(const amp::Problem2D& problem)
 {
     /*
     // Report the problem being solved
