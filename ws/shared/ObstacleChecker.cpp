@@ -3,6 +3,7 @@
 //
 
 #include "Eigen/Dense"
+#include "tools/Environment.h"
 
 #include "ObstacleChecker.h"
 
@@ -468,6 +469,65 @@ std::vector<Eigen::Vector2d> ObstacleChecker::removeDuplicateVertices(const std:
     }
 
     return newVertices;
+}
+
+std::vector<mLineIntersection> ObstacleChecker::calcMLineIntersections(const Eigen::Vector2d &mLine, const amp::Problem2D &problem, bool leftTurner)
+{
+    // Loop over all obstacles
+    for (int i = 0; i < this->obstacleList.size(); i++)
+    {
+        // Choose correct vertices and remove duplicates
+        std::vector<Eigen::Vector2d> vertices;
+        if (leftTurner)
+        {
+            vertices = this->obstacleList[i].verticesCW();
+        }
+        else
+        {
+            vertices = this->obstacleList[i].verticesCCW();
+        }
+
+        vertices = removeDuplicateVertices(vertices);
+
+        // Declare mLineIntersection structure for this obstacle
+        mLineIntersection obstacleIntersection;
+        obstacleIntersection.obstacleIndex = i;
+        obstacleIntersection.obstacle = this->obstacleList[i];
+
+        // Loop over all boundaries and append intersections to the structure
+        for (int ii = 0; ii < vertices.size()-1; ii++)
+        {
+            // Pull out first and second vertex for this boundary
+            Eigen::Vector2d firstVertex = this->obstacleList[i].verticesCCW()[ii];
+            Eigen::Vector2d secondVertex = this->obstacleList[i].verticesCCW()[ii + 1];
+
+            // Calculate boundary vector
+            Eigen::Vector2d r_B = secondVertex - firstVertex;
+
+            // Calculate intersections for this boundary
+            // Propagate m-line onto boundary vector and translate to global frame - this is the vector to the
+            // intersection point on the boundary
+            Eigen::Matrix2d A {{mLine[0], -r_B[0]}, {mLine[1], -r_B[1]}};
+            Eigen::Vector2d b {firstVertex[0] - problem.q_init[0], firstVertex[1] - problem.q_init[1]};
+            Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
+
+            Eigen::Vector2d r_I = x[0]*mLine + problem.q_init;
+
+            // Sort x and y coordinates in increasing order
+            Eigen::Vector2d xCoords = (firstVertex[0] <= secondVertex[0]) ? Eigen::Vector2d{firstVertex[0], secondVertex[0]} : Eigen::Vector2d{secondVertex[0], firstVertex[0]};
+            Eigen::Vector2d yCoords = (firstVertex[1] <= secondVertex[1]) ? Eigen::Vector2d{firstVertex[1], secondVertex[1]} : Eigen::Vector2d{secondVertex[1], firstVertex[1]};
+
+            // Intersection point isn't valid if it falls outside the two vertices
+            if (r_I[0] >= 0.99*xCoords[0] && r_I[0] <= 1.01*xCoords[1] && r_I[1] >= 0.99*yCoords[0] && r_I[1] <= 1.01*yCoords[1])
+            {
+                obstacleIntersection.intersections.push_back(r_I);
+            }
+        }
+
+        mLineIntersections.push_back(obstacleIntersection);
+    }
+
+    return mLineIntersections;
 }
 
 

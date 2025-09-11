@@ -7,7 +7,7 @@
 class Bug1 : public amp::BugAlgorithm {
     public:
         // Override and implement the bug algorithm in the plan method. The methods are declared here in the `.h` file
-        amp::Path2D plan(const amp::Problem2D& problem) override;
+        virtual amp::Path2D plan(const amp::Problem2D& problem) override;
 
         // Getter and setter for incremental distance
         double getDr() const { return dr; };

@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
     bug2algo.setDr(0.05); // Set incremental distance in meters
     bug2algo.setLeftTurner(true); // Set to be a left turner
 
+
     // Workspace 1
     {
         // Call your algorithm on the problem
@@ -52,13 +53,31 @@ int main(int argc, char** argv) {
         // Check your path to make sure that it does not collide with the environment 
         bool success = HW2::check(path, problem1);
 
-        LOG("Found valid solution to workspace 1: " << (success ? "Yes!" : "No :("));
+        LOG("Found valid Bug 1 solution to workspace 1: " << (success ? "Yes!" : "No :("));
+
+        LOG("path length: " << path.length());
+
+        // Visualize the path and environment
+        Visualizer::makeFigure(problem1, path);
+
+
+    }
+
+    {
+        // Call your algorithm on the problem
+        amp::Path2D path = bug2algo.plan(problem1);
+
+        // Check your path to make sure that it does not collide with the environment
+        bool success = HW2::check(path, problem1);
+
+        LOG("Found valid Bug 2 solution to workspace 1: " << (success ? "Yes!" : "No :("));
 
         LOG("path length: " << path.length());
 
         // Visualize the path and environment
         Visualizer::makeFigure(problem1, path);
     }
+
 
     // Workspace 2
     {
@@ -68,7 +87,22 @@ int main(int argc, char** argv) {
         // Check your path to make sure that it does not collide with the environment
         bool success = HW2::check(path, problem2);
 
-        LOG("Found valid solution to workspace 2: " << (success ? "Yes!" : "No :("));
+        LOG("Found valid Bug 1 solution to workspace 2: " << (success ? "Yes!" : "No :("));
+
+        LOG("path length: " << path.length());
+
+        // Visualize the path and environment
+        Visualizer::makeFigure(problem2, path);
+    }
+
+    {
+        // Call your algorithm on the problem
+        amp::Path2D path = bug2algo.plan(problem2);
+
+        // Check your path to make sure that it does not collide with the environment
+        bool success = HW2::check(path, problem2);
+
+        LOG("Found valid Bug 2 solution to workspace 2: " << (success ? "Yes!" : "No :("));
 
         LOG("path length: " << path.length());
 
@@ -82,7 +116,20 @@ int main(int argc, char** argv) {
         amp::Problem2D random_prob; 
         std::vector<Eigen::Vector2d> collision_points;
         bool random_trial_success = HW2::generateAndCheck(bug1algo, path, random_prob, collision_points);
-        LOG("Found valid solution in random environment: " << (random_trial_success ? "Yes!" : "No :("));
+        LOG("Found valid Bug 1 solution in random environment: " << (random_trial_success ? "Yes!" : "No :("));
+
+        LOG("path length: " << path.length());
+
+        // Visualize the path environment, and any collision points with obstacles
+        Visualizer::makeFigure(random_prob, path, collision_points);
+    }
+
+    {
+        amp::Path2D path; // Make empty path, problem, and collision points, as they will be created by generateAndCheck()
+        amp::Problem2D random_prob;
+        std::vector<Eigen::Vector2d> collision_points;
+        bool random_trial_success = HW2::generateAndCheck(bug2algo, path, random_prob, collision_points);
+        LOG("Found valid Bug 2 solution in random environment: " << (random_trial_success ? "Yes!" : "No :("));
 
         LOG("path length: " << path.length());
 
@@ -94,7 +141,12 @@ int main(int argc, char** argv) {
     Visualizer::saveFigures(true, "hw2_figs");
 
 
-    HW2::grade(bug1algo, "iafa3649@colorado.edu", argc, argv);
+
+    //std::cout << "Grading Bug 1: " << std::endl;
+    //HW2::grade(bug1algo, "iafa3649@colorado.edu", argc, argv);
+
+    std::cout << "Grading Bug 2: " << std::endl;
+    HW2::grade(bug2algo, "iafa3649@colorado.edu", argc, argv);
     
     /* If you want to reconstruct your bug algorithm object every trial (to reset member variables from scratch or initialize), use this method instead*/
     //HW2::grade<MyBugAlgorithm>("nonhuman.biologic@myspace.edu", argc, argv, constructor_parameter_1, constructor_parameter_2, etc...);
