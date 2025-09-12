@@ -30,8 +30,6 @@ class ObstacleChecker
             // Propagates the proposed point onto the obstacle's closest boundary
         Collision calcPointOnBoundary(const Eigen::Vector2d &point, const Eigen::Vector2d lastPoint, Collision &collision, bool leftTurner);
 
-            //
-
             // Calculates the centroid of an obstacle
         Eigen::Vector2d calcCentroid(const amp::Obstacle2D &obstacle, bool leftTurner);
 

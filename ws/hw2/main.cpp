@@ -36,15 +36,19 @@ int main(int argc, char** argv) {
     */
 
     // Declare your algorithm objects
+    bool leftTurner = true;
+    double dr = 0.005;
+
     Bug1 bug1algo;
-    bug1algo.setDr(0.05); // Set incremental distance in meters
-    bug1algo.setLeftTurner(true); // Set to be a left turner
+    bug1algo.setDr(dr); // Set incremental distance in meters
+    bug1algo.setLeftTurner(leftTurner); // Set to be a left turner
 
     Bug2 bug2algo;
-    bug2algo.setDr(0.05); // Set incremental distance in meters
-    bug2algo.setLeftTurner(true); // Set to be a left turner
+    bug2algo.setDr(5*dr); // Set incremental distance in meters
+    bug2algo.setLeftTurner(leftTurner); // Set to be a left turner
 
 
+    /*
     // Workspace 1
     {
         // Call your algorithm on the problem
@@ -110,10 +114,11 @@ int main(int argc, char** argv) {
         Visualizer::makeFigure(problem2, path);
     }
 
+    amp::Problem2D random_prob;
     // Let's get crazy and generate a random environment and test your algorithm
     {
         amp::Path2D path; // Make empty path, problem, and collision points, as they will be created by generateAndCheck()
-        amp::Problem2D random_prob; 
+        amp::Problem2D random_prob;
         std::vector<Eigen::Vector2d> collision_points;
         bool random_trial_success = HW2::generateAndCheck(bug1algo, path, random_prob, collision_points);
         LOG("Found valid Bug 1 solution in random environment: " << (random_trial_success ? "Yes!" : "No :("));
@@ -138,16 +143,24 @@ int main(int argc, char** argv) {
     }
 
 
-    Visualizer::saveFigures(true, "hw2_figs");
+    if (leftTurner)
+    {
+        Visualizer::saveFigures(true, "hw2_figs_leftTurn");
+    }
+    else
+    {
+        Visualizer::saveFigures(true, "hw2_figs_rightTurn");
+    }
+    */
 
+    std::cout << "Grading Bug 1: " << std::endl;
+    HW2::grade(bug1algo, "Ian.Faber@colorado.edu", argc, argv);
 
-
-    //std::cout << "Grading Bug 1: " << std::endl;
-    //HW2::grade(bug1algo, "iafa3649@colorado.edu", argc, argv);
-
+    /*
     std::cout << "Grading Bug 2: " << std::endl;
-    HW2::grade(bug2algo, "iafa3649@colorado.edu", argc, argv);
-    
+    HW2::grade(bug2algo, "ian.faber@colorado.edu", argc, argv);
+    */
+
     /* If you want to reconstruct your bug algorithm object every trial (to reset member variables from scratch or initialize), use this method instead*/
     //HW2::grade<MyBugAlgorithm>("nonhuman.biologic@myspace.edu", argc, argv, constructor_parameter_1, constructor_parameter_2, etc...);
     
