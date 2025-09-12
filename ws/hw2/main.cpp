@@ -1,11 +1,13 @@
 // This includes all of the necessary header files in the toolbox
 #include "AMPCore.h"
+#include "tools/Environment.h"
 
 // Include the correct homework header
 #include "hw/HW2.h"
 
 // Include any custom headers you created in your workspace
 #include "Bug1.h"
+#include "Bug2.h"
 
 using namespace amp;
 
@@ -16,48 +18,110 @@ int main(int argc, char** argv) {
     /*    Randomly generate the problem     */ 
 
     // Use WO1 from Exercise 2
-    //Problem2D problem = HW2::getWorkspace1();
+    Problem2D problem1 = HW2::getWorkspace1();
 
     // Use WO2 from Exercise 2
-    Problem2D problem = HW2::getWorkspace2();
+    Problem2D problem2 = HW2::getWorkspace2();
 
-
-    // Make a random environment spec, edit properties about it such as the number of obstacles
     /*
+    // Make a random environment spec, edit properties about it such as the number of obstacles
     Random2DEnvironmentSpecification spec;
     spec.max_obstacle_region_radius = 5.0;
-    spec.n_obstacles = 2;
+    spec.n_obstacles = 200;
     spec.path_clearance = 0.01;
-    spec.d_sep = 0.01;
+    spec.d_sep = 0.001;
 
     //Randomly generate the environment;
-    Problem2D problem = EnvironmentTools::generateRandom(spec); // Random environment
+    Problem2D problemRand = EnvironmentTools::generateRandomPointAgentProblem(spec); // Random environment
     */
 
-    // Declare your algorithm object 
+    // Declare your algorithm objects
+    bool leftTurner = true;
+    double dr = 0.005;
+
     Bug1 bug1algo;
-    bug1algo.setDr(0.01); // Set incremental distance in meters
-    
+    bug1algo.setDr(dr); // Set incremental distance in meters
+    bug1algo.setLeftTurner(leftTurner); // Set to be a left turner
+
+    Bug2 bug2algo;
+    bug2algo.setDr(5*dr); // Set incremental distance in meters
+    bug2algo.setLeftTurner(leftTurner); // Set to be a left turner
+
+
+    /*
+    // Workspace 1
     {
         // Call your algorithm on the problem
-        amp::Path2D path = bug1algo.plan(problem);
+        amp::Path2D path = bug1algo.plan(problem1);
 
         // Check your path to make sure that it does not collide with the environment 
-        bool success = HW2::check(path, problem);
+        bool success = HW2::check(path, problem1);
 
-        LOG("Found valid solution to workspace 1: " << (success ? "Yes!" : "No :("));
+        LOG("Found valid Bug 1 solution to workspace 1: " << (success ? "Yes!" : "No :("));
+
+        LOG("path length: " << path.length());
 
         // Visualize the path and environment
-        Visualizer::makeFigure(problem, path);
+        Visualizer::makeFigure(problem1, path);
+
+
     }
 
+    {
+        // Call your algorithm on the problem
+        amp::Path2D path = bug2algo.plan(problem1);
+
+        // Check your path to make sure that it does not collide with the environment
+        bool success = HW2::check(path, problem1);
+
+        LOG("Found valid Bug 2 solution to workspace 1: " << (success ? "Yes!" : "No :("));
+
+        LOG("path length: " << path.length());
+
+        // Visualize the path and environment
+        Visualizer::makeFigure(problem1, path);
+    }
+
+
+    // Workspace 2
+    {
+        // Call your algorithm on the problem
+        amp::Path2D path = bug1algo.plan(problem2);
+
+        // Check your path to make sure that it does not collide with the environment
+        bool success = HW2::check(path, problem2);
+
+        LOG("Found valid Bug 1 solution to workspace 2: " << (success ? "Yes!" : "No :("));
+
+        LOG("path length: " << path.length());
+
+        // Visualize the path and environment
+        Visualizer::makeFigure(problem2, path);
+    }
+
+    {
+        // Call your algorithm on the problem
+        amp::Path2D path = bug2algo.plan(problem2);
+
+        // Check your path to make sure that it does not collide with the environment
+        bool success = HW2::check(path, problem2);
+
+        LOG("Found valid Bug 2 solution to workspace 2: " << (success ? "Yes!" : "No :("));
+
+        LOG("path length: " << path.length());
+
+        // Visualize the path and environment
+        Visualizer::makeFigure(problem2, path);
+    }
+
+    amp::Problem2D random_prob;
     // Let's get crazy and generate a random environment and test your algorithm
     {
         amp::Path2D path; // Make empty path, problem, and collision points, as they will be created by generateAndCheck()
-        amp::Problem2D random_prob; 
+        amp::Problem2D random_prob;
         std::vector<Eigen::Vector2d> collision_points;
         bool random_trial_success = HW2::generateAndCheck(bug1algo, path, random_prob, collision_points);
-        LOG("Found valid solution in random environment: " << (random_trial_success ? "Yes!" : "No :("));
+        LOG("Found valid Bug 1 solution in random environment: " << (random_trial_success ? "Yes!" : "No :("));
 
         LOG("path length: " << path.length());
 
@@ -65,11 +129,38 @@ int main(int argc, char** argv) {
         Visualizer::makeFigure(random_prob, path, collision_points);
     }
 
-    Visualizer::saveFigures(true, "hw2_figs");
+    {
+        amp::Path2D path; // Make empty path, problem, and collision points, as they will be created by generateAndCheck()
+        amp::Problem2D random_prob;
+        std::vector<Eigen::Vector2d> collision_points;
+        bool random_trial_success = HW2::generateAndCheck(bug2algo, path, random_prob, collision_points);
+        LOG("Found valid Bug 2 solution in random environment: " << (random_trial_success ? "Yes!" : "No :("));
+
+        LOG("path length: " << path.length());
+
+        // Visualize the path environment, and any collision points with obstacles
+        Visualizer::makeFigure(random_prob, path, collision_points);
+    }
 
 
-    HW2::grade(bug1algo, "iafa3649@colorado.edu", argc, argv);
-    
+    if (leftTurner)
+    {
+        Visualizer::saveFigures(true, "hw2_figs_leftTurn");
+    }
+    else
+    {
+        Visualizer::saveFigures(true, "hw2_figs_rightTurn");
+    }
+    */
+
+    std::cout << "Grading Bug 1: " << std::endl;
+    HW2::grade(bug1algo, "Ian.Faber@colorado.edu", argc, argv);
+
+    /*
+    std::cout << "Grading Bug 2: " << std::endl;
+    HW2::grade(bug2algo, "ian.faber@colorado.edu", argc, argv);
+    */
+
     /* If you want to reconstruct your bug algorithm object every trial (to reset member variables from scratch or initialize), use this method instead*/
     //HW2::grade<MyBugAlgorithm>("nonhuman.biologic@myspace.edu", argc, argv, constructor_parameter_1, constructor_parameter_2, etc...);
     

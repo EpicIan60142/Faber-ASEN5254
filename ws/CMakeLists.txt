@@ -3,7 +3,12 @@ file(GLOB HW_SUBDIRECTORIES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/shared")
     message("Found user-created libraries")
     file(GLOB USER_LIB_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/shared/*.cpp")
-    add_library(user_library STATIC ${USER_LIB_SOURCES})
+    add_library(user_library STATIC ${USER_LIB_SOURCES}
+            shared/ObstacleChecker.h
+            shared/ObstacleChecker.cpp
+            shared/ObstacleChecker.h
+            shared/Collision.h
+            shared/mLineIntersection.h)
     target_link_libraries(user_library PRIVATE
         yaml-cpp
         Eigen3::Eigen
@@ -25,7 +30,9 @@ foreach(SUBDIR ${HW_SUBDIRECTORIES})
     if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${SUBDIR} AND NOT SUBDIR STREQUAL "shared" AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${SUBDIR}/IGNORE")
         file(GLOB_RECURSE USER_SOURCES "${SUBDIR}/*.cpp")
         set(TARGET_NAME "main-${SUBDIR}")
-        add_executable(${TARGET_NAME} ${USER_SOURCES})
+        add_executable(${TARGET_NAME} ${USER_SOURCES}
+                hw2/Bug2.cpp
+                hw2/Bug2.h)
         target_link_libraries(${TARGET_NAME} PRIVATE
             yaml-cpp
             Eigen3::Eigen
