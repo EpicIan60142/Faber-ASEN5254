@@ -186,7 +186,6 @@ class Visualizer {
         static void saveFigures(bool show = true, const std::string& directory = "all", const std::string& format = "png");
 
     private:
-        static void saveFigures(const std::string& format, const std::string& directory);
         static void createAxes(const Environment2D& env);
         static void createAxes(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal);
         static void createAxes(const Problem2D& prob);
@@ -239,7 +238,7 @@ class Visualizer {
                                 const std::string& title = std::string(), const std::string& xlabel = std::string(), const std::string& ylabel = std::string()) {}
         static void makeBarGraph(const std::vector<double>& values, const std::vector<std::string>& labels, 
                                 const std::string& title = std::string(), const std::string& xlabel = std::string(), const std::string& ylabel = std::string()) {}
-        static void showFigures() {}
+        static void saveFigures(bool show = true, const std::string& directory = "all", const std::string& format = "png") {}
 };
 }
 

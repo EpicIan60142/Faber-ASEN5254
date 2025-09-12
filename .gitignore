@@ -12,4 +12,5 @@ ompl/build
 /build_and_run.sh
 /.env.sh
 /grade.sh
-/file_dump/
+/report_cards/
+/figures/

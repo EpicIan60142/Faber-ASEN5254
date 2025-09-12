@@ -14,6 +14,8 @@ if [[ $# == 0 ]]; then
     exit 1
 fi
 
+mkdir -p report_cards
+
 case "$2" in 
     --hw2)
         echo "Grading hw2 using project: $1"
