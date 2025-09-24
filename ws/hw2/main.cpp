@@ -37,18 +37,16 @@ int main(int argc, char** argv) {
 
     // Declare your algorithm objects
     bool leftTurner = true;
-    double dr = 0.005;
+    double dr = 0.1;
 
     Bug1 bug1algo;
     bug1algo.setDr(dr); // Set incremental distance in meters
     bug1algo.setLeftTurner(leftTurner); // Set to be a left turner
 
     Bug2 bug2algo;
-    bug2algo.setDr(5*dr); // Set incremental distance in meters
+    bug2algo.setDr(dr); // Set incremental distance in meters
     bug2algo.setLeftTurner(leftTurner); // Set to be a left turner
 
-
-    /*
     // Workspace 1
     {
         // Call your algorithm on the problem
@@ -114,6 +112,7 @@ int main(int argc, char** argv) {
         Visualizer::makeFigure(problem2, path);
     }
 
+    /*
     amp::Problem2D random_prob;
     // Let's get crazy and generate a random environment and test your algorithm
     {
@@ -141,6 +140,7 @@ int main(int argc, char** argv) {
         // Visualize the path environment, and any collision points with obstacles
         Visualizer::makeFigure(random_prob, path, collision_points);
     }
+    */
 
 
     if (leftTurner)
@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
     {
         Visualizer::saveFigures(true, "hw2_figs_rightTurn");
     }
-    */
+
 
     std::cout << "Grading Bug 1: " << std::endl;
     HW2::grade(bug1algo, "Ian.Faber@colorado.edu", argc, argv);

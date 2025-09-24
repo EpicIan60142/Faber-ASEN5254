@@ -32,7 +32,9 @@ foreach(SUBDIR ${HW_SUBDIRECTORIES})
         set(TARGET_NAME "main-${SUBDIR}")
         add_executable(${TARGET_NAME} ${USER_SOURCES}
                 hw2/Bug2.cpp
-                hw2/Bug2.h)
+                hw2/Bug2.h
+                hw4/Manipulator2D.cpp
+                hw4/Manipulator2D.h)
         target_link_libraries(${TARGET_NAME} PRIVATE
             yaml-cpp
             Eigen3::Eigen

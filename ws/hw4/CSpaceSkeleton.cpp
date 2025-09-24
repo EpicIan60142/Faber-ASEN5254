@@ -3,9 +3,9 @@
 // Override this method for returning whether or not a point is in collision
 
 std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, double x1) const {
-    // Implment your discretization procedure here, such that the point (x0, x1) lies within the returned cell
+    // Implement your discretization procedure here, such that the point (x0, x1) lies within the returned cell
     std::size_t cell_x = 0; // x index of cell
-    std::size_t cell_y = 0; // x index of cell
+    std::size_t cell_y = 0; // y index of cell
     return {cell_x, cell_y};
 }
 
