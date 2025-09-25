@@ -34,7 +34,9 @@ foreach(SUBDIR ${HW_SUBDIRECTORIES})
                 hw2/Bug2.cpp
                 hw2/Bug2.h
                 hw4/Manipulator2D.cpp
-                hw4/Manipulator2D.h)
+                hw4/Manipulator2D.h
+                hw4/CSpace.cpp
+                hw4/CSpace.h)
         target_link_libraries(${TARGET_NAME} PRIVATE
             yaml-cpp
             Eigen3::Eigen

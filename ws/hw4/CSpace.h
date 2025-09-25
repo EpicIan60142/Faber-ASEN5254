@@ -1,4 +1,9 @@
-#pragma once
+//
+// Created by ianmf on 9/24/25.
+//
+
+#ifndef AMP_TOOLS_CSPACE_H
+#define AMP_TOOLS_CSPACE_H
 
 // This includes all of the necessary header files in the toolbox
 #include "AMPCore.h"
@@ -7,9 +12,9 @@
 #include "hw/HW4.h"
 
 // Derive the amp::GridCSpace2D class and override the missing method
-class MyGridCSpace2Da : public amp::GridCSpace2D {
+class MyGridCSpace2D : public amp::GridCSpace2D {
     public:
-        MyGridCSpace2Da(std::size_t x0_cells, std::size_t x1_cells, double x0_min, double x0_max, double x1_min, double x1_max)
+        MyGridCSpace2D(std::size_t x0_cells, std::size_t x1_cells, double x0_min, double x0_max, double x1_min, double x1_max)
             : amp::GridCSpace2D(x0_cells, x1_cells, x0_min, x0_max, x1_min, x1_max) // Call base class constructor
         {}
 
@@ -19,10 +24,10 @@ class MyGridCSpace2Da : public amp::GridCSpace2D {
 };
 
 // Derive the HW4 ManipulatorCSConstructor class and override the missing method
-class MyManipulatorCSConstructora : public amp::ManipulatorCSConstructor {
+class MyManipulatorCSConstructor : public amp::ManipulatorCSConstructor {
     public:
         // To make things easy, add the number of cells as a ctor param so you can easily play around with it
-        MyManipulatorCSConstructora(std::size_t cells_per_dim) : m_cells_per_dim(cells_per_dim) {}
+        MyManipulatorCSConstructor(std::size_t cells_per_dim) : m_cells_per_dim(cells_per_dim) {}
 
         // Override this method for computing all of the boolean collision values for each cell in the cspace
         virtual std::unique_ptr<amp::GridCSpace2D> construct(const amp::LinkManipulator2D& manipulator, const amp::Environment2D& env) override;
@@ -30,3 +35,5 @@ class MyManipulatorCSConstructora : public amp::ManipulatorCSConstructor {
     private:
         std::size_t m_cells_per_dim;
 };
+
+#endif //AMP_TOOLS_CSPACE_H

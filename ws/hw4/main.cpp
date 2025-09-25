@@ -5,11 +5,8 @@
 #include "hw/HW4.h"
 
 // Include the headers for HW4 code
-#include "CSpaceSkeleton.h"
+#include "CSpace.h"
 #include "Manipulator2D.h"
-
-// Include the header of the shared class
-#include "HelpfulClass.h"
 
 using namespace amp;
 
@@ -49,11 +46,13 @@ int main(int argc, char** argv) {
     Visualizer::makeFigure(manipulator2b, test_state);
 
     // Create the collision space constructor
-    std::size_t n_cells = 5;
+    std::size_t n_cells = 100;
     MyManipulatorCSConstructor cspace_constructor(n_cells);
 
+    Manipulator2D manipulator3({1.0, 1.0});
+
     // Create the collision space using a given manipulator and environment
-    std::unique_ptr<amp::GridCSpace2D> cspace = cspace_constructor.construct(manipulator2a, HW4::getEx3Workspace1());
+    std::unique_ptr<amp::GridCSpace2D> cspace = cspace_constructor.construct(manipulator3, HW4::getEx3Workspace1());
 
     // You can visualize your cspace 
     Visualizer::makeFigure(*cspace);

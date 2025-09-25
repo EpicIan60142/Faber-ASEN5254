@@ -15,7 +15,8 @@ Manipulator2D::Manipulator2D(const std::vector<double>& link_lengths)
 {}
 
 // Override this method for implementing forward kinematics
-Eigen::Vector2d Manipulator2D::getJointLocation(const amp::ManipulatorState& state, uint32_t joint_index) const {
+Eigen::Vector2d Manipulator2D::getJointLocation(const amp::ManipulatorState& state, uint32_t joint_index) const
+{
     // Implement forward kinematics to calculate the joint position given the manipulator state (angles)
         // Vector to store joint positions
     std::vector<Eigen::Vector2d> joint_positions;
@@ -69,7 +70,8 @@ Eigen::Vector2d Manipulator2D::getJointLocation(const amp::ManipulatorState& sta
 }
 
 // Override this method for implementing inverse kinematics
-amp::ManipulatorState Manipulator2D::getConfigurationFromIK(const Eigen::Vector2d& end_effector_location) const {
+amp::ManipulatorState Manipulator2D::getConfigurationFromIK(const Eigen::Vector2d& end_effector_location) const
+{
     // Implement inverse kinematics here
         // Extract end effector coordinates and link lengths
     double x = end_effector_location[0];
@@ -81,73 +83,111 @@ amp::ManipulatorState Manipulator2D::getConfigurationFromIK(const Eigen::Vector2
     joint_angles.setZero();
 
     // If you have different implementations for 2/3/n link manipulators, you can separate them here
-    if (nLinks() == 2) {
+    if (nLinks() == 2)
+    {
             // Theta 2 from x^2 + y^2
         double cos2 = (pow(x,2) + pow(y,2) - pow(linkLengths[0],2) - pow(linkLengths[1],2))/(2*linkLengths[0]*linkLengths[1]);
         double sin2 = sqrt(1-pow(cos2,2));
 
             // Theta 1 from forward kinematics
-        double cos1 = (1/(pow(linkLengths[0],2) + pow(linkLengths[1],2)))*(x*(linkLengths[1]*cos2 + linkLengths[0]) + y*(linkLengths[1]*sin2));
-        double sin1 = (1/(pow(linkLengths[0],2) + pow(linkLengths[1],2)))*(y*(linkLengths[1]*cos2 + linkLengths[0]) - x*(linkLengths[1]*sin2));
+        double cos1 = (1/(pow(x,2) + pow(y,2)))*(x*(linkLengths[1]*cos2 + linkLengths[0]) + y*(linkLengths[1]*sin2));
+        double sin1 = (1/(pow(x,2) + pow(y,2)))*(y*(linkLengths[1]*cos2 + linkLengths[0]) - x*(linkLengths[1]*sin2));
 
             // Assign joint angles
         joint_angles[0] = atan2(sin1,cos1);
         joint_angles[1] = atan2(sin2,cos2);
 
         return joint_angles;
-    } else if (nLinks() == 3) {
-            // Do a cos(theta1) sweep from -1 to 1 until we get a valid angle
+    }
+    else if (nLinks() == 3)
+    {
+        double bestError = std::numeric_limits<double>::max();
+
+        // Sweep through possible values of theta1
         for (double cos1 = -1; cos1 <= 1; cos1 += 0.001)
         {
-                // Calculate sin(theta1) based on current cos(theta1) guess, assuming positive sin(theta1)
-            double sin1 = sqrt(1-pow(cos1,2));
+                // Calculate sin(theta1) from cos(theta1)
+            double sin1_base = sqrt(1-pow(cos1,2));
 
-                // Calculate xPrime and yPrime from given x and y - x and y in link 2's frame
-            double x_translate = x - linkLengths[0]*cos1;
-            double y_translate = y - linkLengths[0]*sin1;
-
-            double xPrime = x_translate*cos1 + y_translate*sin1;// - linkLengths[0];//+ linkLengths[0]*cos1;
-            double yPrime = -x_translate*sin1 + y_translate*cos1;// - linkLengths[0]*sin1;
-
-                // Calculate cos(theta3) based on cos(theta1) guess
-            double cos3 = (pow(xPrime,2) + pow(yPrime,2) - pow(linkLengths[1],2) - pow(linkLengths[2],2))/(2*linkLengths[1]*linkLengths[2]);
-            if (abs(cos3) > 1.0)
+                // Try both positive and negative sin(theta1)
+            for (int sign1 = 1; sign1 >= -1; sign1 -= 2)
             {
-                continue;
-            }
+                    // Apply sign, positive first
+                double sin1 = sign1*sin1_base;
 
-            double sin3 = sqrt(1-pow(cos3,2));
+                    // Calculate xPrime and yPrime by translating x and y to link 2's frame
+                double xTranslate = x - linkLengths[0] * cos1;
+                double yTranslate = y - linkLengths[0] * sin1;
 
-                // Calculate cos(theta2) based on cos(theta1) guess
-            double cos2 = (1/(pow(linkLengths[1],2) + pow(linkLengths[2],2)))*(xPrime*(linkLengths[2]*cos3 + linkLengths[1]) + yPrime*(linkLengths[2]*sin3));
-            double sin2 = (1/(pow(linkLengths[1],2) + pow(linkLengths[2],2)))*(yPrime*(linkLengths[2]*cos3 + linkLengths[1]) - xPrime*(linkLengths[2]*sin3));
+                        // Rotation matrix about theta1 transposed, we are going to local frame from global frame
+                double xPrime = xTranslate * cos1 + yTranslate * sin1; // Reduces to xcos1 + ysin1 + a1
+                double yPrime = -xTranslate * sin1 + yTranslate * cos1; // Reduces to -xsin1 + ycos1
 
-                // Calculate candidate angles in radians
-            double theta1 = atan2(sin1,cos1);
-            double theta2 = atan2(sin2,cos2);
-            double theta3 = atan2(sin3,cos3);
+                    // Calculate cos(theta3) from xPrime and yPrime
+                double cos3 = (pow(xPrime,2) + pow(yPrime,2) - pow(linkLengths[1],2) - pow(linkLengths[2],2))/(2*linkLengths[1]*linkLengths[2]);
 
-                // Check if candidate state gets sufficiently close to the requested point via forward kinematics. If so, good solution and break out of sweep
-            amp::ManipulatorState testState(nLinks());
-            testState << theta1, theta2, theta3;
-            Eigen::Vector2d checkPosition = getJointLocation(testState, nLinks());
+                    // cos(theta3) is valid if it's between -1 and 1
+                if (abs(cos3) > 1.0)
+                {
+                    continue;
+                }
 
-            Eigen::Vector2d diff = end_effector_location - checkPosition;
-            if (diff.norm() < 1e-10)
-            {
-                joint_angles[0] = theta1;
-                joint_angles[1] = theta2;
-                joint_angles[2] = theta3;
-                break;
+                    // Calculate sin(theta3) from cos(theta3)
+                double sin3_base = sqrt(1-pow(cos3,2));
+
+                    // Try both positive and negative sin(theta3)
+                for (int sign3 = 1; sign3 >= -1; sign3 -= 2)
+                {
+                        // Apply sign, positive first
+                    double sin3 = sign3*sin3_base;
+
+                        // Calculate cos(theta2) and sin(theta2) from cos(theta3) and sin(theta3)
+                    double cos2 = (1/(pow(xPrime,2) + pow(yPrime,2)))*(xPrime*(linkLengths[2]*cos3 + linkLengths[1]) + yPrime*(linkLengths[2]*sin3));
+                    double sin2 = (1/(pow(xPrime,2) + pow(yPrime,2)))*(yPrime*(linkLengths[2]*cos3 + linkLengths[1]) - xPrime*(linkLengths[2]*sin3));
+
+                        // Check that cos(theta2) and sin(theta2) are valid
+                    if (abs(cos2) > 1.0 || abs(sin2) > 1.0)
+                    {
+                        continue;
+                    }
+
+                        // Calculate candidate angles
+                    double theta1 = atan2(sin1, cos1);
+                    double theta2 = atan2(sin2, cos2);
+                    double theta3 = atan2(sin3, cos3);
+
+                        // Test candidate state via FK on the end effector
+                    amp::ManipulatorState testState(nLinks());
+                    testState << theta1, theta2, theta3;
+                    Eigen::Vector2d checkPosition = getJointLocation(testState, nLinks());
+
+                    Eigen::Vector2d diff = end_effector_location - checkPosition;
+                    double error = diff.norm();
+
+                    // Keep track of the best solution found
+                    if (error < bestError)
+                    {
+                        bestError = error;
+                        joint_angles = testState;
+
+                        // If solution is good enough, terminate function
+                        if (error < 1e-6)
+                        {
+                            return joint_angles;
+                        }
+                    }
+                }
             }
         }
-
+    
+        // Return the best solution found, even if not perfect
         return joint_angles;
-    } else {
+    }
+    else
+    {
 
         return joint_angles;
     }
 
     return joint_angles;
 }
-
