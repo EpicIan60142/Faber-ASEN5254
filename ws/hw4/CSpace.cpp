@@ -3,6 +3,7 @@
 //
 
 #include "CSpace.h"
+#include "ObstacleChecker.h"
 
 // Override this method for returning whether or not a point is in collision
 
@@ -64,9 +65,47 @@ std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const a
     // In order to use the pointer as a regular GridCSpace2D object, we can just create a reference
     MyGridCSpace2D& cspace = *cspace_ptr;
 
+    // Create an obstacle checker object for primitive evaluation
+    ObstacleChecker obsCheck;
+    obsCheck.setObstacles(env.obstacles);
+
     // Apply minkowski sum to convert workspace obstacles to c-space
+    std::vector<amp::Obstacle2D> cSpaceObs; // Create vector for storing c-space obstacles
+
+        // Loop through all configurations and calculate joint vertices for robot
+    for (double theta1 = 0; theta1 < 2 * M_PI; theta1 += 0.01)
+    {
+        for (double theta2 = 0; theta2 < 2*M_PI; theta2 += 0.01)
+        {
+                // Create configuration state
+            amp::ManipulatorState state(2);
+            state << theta1, theta2;
+
+                // Propagate forward kinematics
+            Eigen::Vector2d baseLocation = manipulator.getJointLocation(state, 0);
+            Eigen::Vector2d joint1End = manipulator.getJointLocation(state, 1);
+            Eigen::Vector2d joint2End = manipulator.getJointLocation(state, 2);
+
+                // Invert robot (get -A)
+            baseLocation *= -1;
+            joint1End *= -1;
+            joint2End *= -1;
+
+                // Sort robot and obstacle vertices in counter-clockwise order, starting with smallest y coordinate
+
+
+                // Run Minkowski sum on each obstacle in workspace to get corresponding c space obstacle
+
+
+        }
+    }
 
     // Determine if each cell is in collision or not, and store the values the cspace. This `()` operator comes from DenseArray base class
+        // Loop through each grid point and check if any c space obstacle vertices/edges fall inside the grid. If so, mark as a collision
+
+
+
+
     cspace(1, 3) = true;
     cspace(3, 3) = true;
     cspace(0, 1) = true;
