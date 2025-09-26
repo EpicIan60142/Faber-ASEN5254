@@ -78,11 +78,6 @@ std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const a
     obsCheck.setObstacles(env.obstacles);
 
     // Loop through all configurations and calculate joint vertices for robot
-    /*for (double theta1 = 0; theta1 < 2*M_PI; theta1 += 0.1)
-    {
-        for (double theta2 = 0; theta2 < 2*M_PI; theta2 += 0.1)
-        {
-    */
     std::pair<std::size_t, std::size_t> cellNums = cspace.size();
     for (std::size_t i = 0; i < cellNums.first; i++)
     {
@@ -114,10 +109,10 @@ std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const a
                 Eigen::Vector2d secondVertex = joints[i+1];
 
                     // Test joints for collisions
-                bool firstCollide = obsCheck.evaluatePrimitives(firstVertex, false);
-                bool secondCollide = obsCheck.evaluatePrimitives(secondVertex, false);
+                //bool firstCollide = obsCheck.evaluatePrimitives(firstVertex, false);
+                bool endCollide = obsCheck.evaluatePrimitives(secondVertex, false);
 
-                if (firstCollide || secondCollide)
+                if (endCollide)
                 {
                     cspace(cellIdx.first, cellIdx.second) = true;
                     break;

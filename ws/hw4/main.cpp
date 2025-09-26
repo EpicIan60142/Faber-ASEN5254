@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
     Visualizer::makeFigure(manipulator2b, test_state);
 
     // Create the configuration space constructor
-    std::size_t n_cells = 60;
+    std::size_t n_cells = 100;
     MyManipulatorCSConstructor cspace_constructor(n_cells);
 
     Manipulator2D manipulator3({1.0, 1.0});
