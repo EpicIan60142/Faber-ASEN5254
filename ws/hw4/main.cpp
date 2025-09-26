@@ -51,19 +51,22 @@ int main(int argc, char** argv) {
 
     Manipulator2D manipulator3({1.0, 1.0});
 
-    // Create and visualize the configuration space for problem 3a
+    // Create and visualize the configuration space for problem 3a, in addition to the workspace
     std::unique_ptr<amp::GridCSpace2D> cspace = cspace_constructor.construct(manipulator3, HW4::getEx3Workspace1());
 
+    Visualizer::makeFigure(HW4::getEx3Workspace1());
     Visualizer::makeFigure(*cspace);
 
-    // Create and visualize the configuration space for problem 3b
+    // Create and visualize the configuration space for problem 3b, in addition to the workspace
     cspace = cspace_constructor.construct(manipulator3, HW4::getEx3Workspace2());
 
+    Visualizer::makeFigure(HW4::getEx3Workspace2());
     Visualizer::makeFigure(*cspace);
 
-    // Create and visualize the configuration space for problem 3c
+    // Create and visualize the configuration space for problem 3c, in addition to the workspace
     cspace = cspace_constructor.construct(manipulator3, HW4::getEx3Workspace3());
 
+    Visualizer::makeFigure(HW4::getEx3Workspace3());
     Visualizer::makeFigure(*cspace);
 
     Visualizer::saveFigures(true, "hw4_figs");
