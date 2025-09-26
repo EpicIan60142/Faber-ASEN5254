@@ -61,7 +61,7 @@ std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const a
 {
     // Create an object of my custom cspace type (e.g. MyGridCSpace2D) and store it in a unique pointer.
     // Pass the constructor parameters to std::make_unique()
-    std::unique_ptr<MyGridCSpace2D> cspace_ptr = std::make_unique<MyGridCSpace2D>(m_cells_per_dim, m_cells_per_dim, env.x_min, env.x_max, env.y_min, env.y_max);
+    std::unique_ptr<MyGridCSpace2D> cspace_ptr = std::make_unique<MyGridCSpace2D>(m_cells_per_dim, m_cells_per_dim, 0, 2*M_PI, 0, 2*M_PI);
     // In order to use the pointer as a regular GridCSpace2D object, we can just create a reference
     MyGridCSpace2D& cspace = *cspace_ptr;
 
@@ -69,43 +69,64 @@ std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const a
     ObstacleChecker obsCheck;
     obsCheck.setObstacles(env.obstacles);
 
-    // Apply minkowski sum to convert workspace obstacles to c-space
-    std::vector<amp::Obstacle2D> cSpaceObs; // Create vector for storing c-space obstacles
-
         // Loop through all configurations and calculate joint vertices for robot
-    for (double theta1 = 0; theta1 < 2 * M_PI; theta1 += 0.01)
+    for (double theta1 = 0; theta1 < 2*M_PI; theta1 += 0.1)
     {
-        for (double theta2 = 0; theta2 < 2*M_PI; theta2 += 0.01)
+        for (double theta2 = 0; theta2 < 2*M_PI; theta2 += 0.1)
         {
+                // Store joint vertices
+            std::vector<Eigen::Vector2d> joints;
+
                 // Create configuration state
             amp::ManipulatorState state(2);
             state << theta1, theta2;
 
                 // Propagate forward kinematics
-            Eigen::Vector2d baseLocation = manipulator.getJointLocation(state, 0);
-            Eigen::Vector2d joint1End = manipulator.getJointLocation(state, 1);
-            Eigen::Vector2d joint2End = manipulator.getJointLocation(state, 2);
+            joints.push_back(manipulator.getJointLocation(state, 0)); // Base location
+            joints.push_back(manipulator.getJointLocation(state, 1)); // End of first link
+            joints.push_back(manipulator.getJointLocation(state, 2)); // End of second link
 
-                // Invert robot (get -A)
-            baseLocation *= -1;
-            joint1End *= -1;
-            joint2End *= -1;
+                // Check each line for collisions
+            for (int i = 0; i < manipulator.nLinks(); i++)
+            {
+                    // Extract arm vertices
+                Eigen::Vector2d firstVertex = joints[i];
+                Eigen::Vector2d secondVertex = joints[i+1];
 
-                // Sort robot and obstacle vertices in counter-clockwise order, starting with smallest y coordinate
+                    // Test joints for collisions
+                bool firstCollide = obsCheck.evaluatePrimitives(firstVertex, false);
+                bool secondCollide = obsCheck.evaluatePrimitives(secondVertex, false);
 
+                if (firstCollide || secondCollide)
+                {
+                    std::pair<std::size_t, std::size_t> cellIdx = cspace.getCellFromPoint(theta1, theta2);
 
-                // Run Minkowski sum on each obstacle in workspace to get corresponding c space obstacle
+                    cspace(cellIdx.first, cellIdx.second) = true;
+                }
 
+                    // Test in between points for collisions
+                double lineLength = (secondVertex - firstVertex).norm();
+                for (double dr = 0; dr < lineLength; dr += 0.05)
+                {
+                    Eigen::Vector2d candidatePoint = firstVertex + dr * (secondVertex - firstVertex).normalized();
 
+                    bool pointCollide = obsCheck.evaluatePrimitives(candidatePoint, false);
+
+                    if (pointCollide)
+                    {
+                        std::pair<std::size_t, std::size_t> cellIdx = cspace.getCellFromPoint(theta1, theta2);
+
+                        cspace(cellIdx.first, cellIdx.second) = true;
+                    }
+                }
+            }
         }
     }
 
     // Determine if each cell is in collision or not, and store the values the cspace. This `()` operator comes from DenseArray base class
         // Loop through each grid point and check if any c space obstacle vertices/edges fall inside the grid. If so, mark as a collision
 
-
-
-
+/*
     cspace(1, 3) = true;
     cspace(3, 3) = true;
     cspace(0, 1) = true;
@@ -113,6 +134,7 @@ std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const a
     cspace(2, 0) = true;
     cspace(3, 0) = true;
     cspace(4, 1) = true;
+*/
 
     // Returning the object of type std::unique_ptr<MyGridCSpace2D> can automatically cast it to a polymorphic base-class pointer of type std::unique_ptr<amp::GridCSpace2D>.
     // The reason why this works is not super important for our purposes, but if you are curious, look up polymorphism!
