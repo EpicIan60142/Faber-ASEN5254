@@ -45,21 +45,31 @@ int main(int argc, char** argv) {
 
     Visualizer::makeFigure(manipulator2b, test_state);
 
-    // Create the collision space constructor
+    // Create the configuration space constructor
     std::size_t n_cells = 60;
     MyManipulatorCSConstructor cspace_constructor(n_cells);
 
     Manipulator2D manipulator3({1.0, 1.0});
 
-    // Create the collision space using a given manipulator and environment
-    std::unique_ptr<amp::GridCSpace2D> cspace = cspace_constructor.construct(manipulator3, HW4::getEx3Workspace3());
+    // Create and visualize the configuration space for problem 3a
+    std::unique_ptr<amp::GridCSpace2D> cspace = cspace_constructor.construct(manipulator3, HW4::getEx3Workspace1());
 
-    // You can visualize your cspace 
+    Visualizer::makeFigure(*cspace);
+
+    // Create and visualize the configuration space for problem 3b
+    cspace = cspace_constructor.construct(manipulator3, HW4::getEx3Workspace2());
+
+    Visualizer::makeFigure(*cspace);
+
+    // Create and visualize the configuration space for problem 3c
+    cspace = cspace_constructor.construct(manipulator3, HW4::getEx3Workspace3());
+
     Visualizer::makeFigure(*cspace);
 
     Visualizer::saveFigures(true, "hw4_figs");
 
     // Grade method
     amp::HW4::grade<Manipulator2D>(cspace_constructor, "Ian.Faber@colorado.edu", argc, argv);
+
     return 0;
 }
