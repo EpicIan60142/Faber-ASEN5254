@@ -25,6 +25,13 @@ std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, 
     double x1Min = x1Bounds.first;
     double x1Max = x1Bounds.second;
 
+        // Compute where the provided point falls in the grid
+    double x0Ratio = (x0 - x0Min) / (x0Max - x0Min);
+    double x1Ratio = (x1 - x1Min) / (x1Max - x1Min);
+    std::size_t cell_x = x0Ratio * x0Cells;
+    std::size_t cell_y = x1Ratio * x1Cells;
+
+    /*
         // Declare cell index objects
     std::size_t cell_x = 0; // x index of cell
     std::size_t cell_y = 0; // y index of cell
@@ -52,6 +59,7 @@ std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, 
     }
     // If the point is not in any cell, return the cell that contains the point (x0, x1)
     // (e.g. return (0, 0) if x0 < m_x_min or x1 < m_y_min
+    */
 
     return {cell_x, cell_y};
 }
@@ -69,17 +77,29 @@ std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const a
     ObstacleChecker obsCheck;
     obsCheck.setObstacles(env.obstacles);
 
-        // Loop through all configurations and calculate joint vertices for robot
-    for (double theta1 = 0; theta1 < 2*M_PI; theta1 += 0.1)
+    // Loop through all configurations and calculate joint vertices for robot
+    /*for (double theta1 = 0; theta1 < 2*M_PI; theta1 += 0.1)
     {
         for (double theta2 = 0; theta2 < 2*M_PI; theta2 += 0.1)
         {
+    */
+    std::pair<std::size_t, std::size_t> cellNums = cspace.size();
+    for (std::size_t i = 0; i < cellNums.first; i++)
+    {
+        for (std::size_t j = 0; j < cellNums.second; j++)
+        {
+                // Extract midpoint of each configuration cell as theta1 and theta2
+            double theta1 = (i + 0.5) * (2*M_PI / cellNums.first);
+            double theta2 = (j + 0.5) * (2*M_PI / cellNums.second);
+
                 // Store joint vertices
             std::vector<Eigen::Vector2d> joints;
 
                 // Create configuration state
             amp::ManipulatorState state(2);
             state << theta1, theta2;
+
+            std::pair<std::size_t, std::size_t> cellIdx = cspace.getCellFromPoint(theta1, theta2);
 
                 // Propagate forward kinematics
             joints.push_back(manipulator.getJointLocation(state, 0)); // Base location
@@ -99,9 +119,8 @@ std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const a
 
                 if (firstCollide || secondCollide)
                 {
-                    std::pair<std::size_t, std::size_t> cellIdx = cspace.getCellFromPoint(theta1, theta2);
-
                     cspace(cellIdx.first, cellIdx.second) = true;
+                    break;
                 }
 
                     // Test in between points for collisions
@@ -114,27 +133,12 @@ std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const a
 
                     if (pointCollide)
                     {
-                        std::pair<std::size_t, std::size_t> cellIdx = cspace.getCellFromPoint(theta1, theta2);
-
                         cspace(cellIdx.first, cellIdx.second) = true;
                     }
                 }
             }
         }
     }
-
-    // Determine if each cell is in collision or not, and store the values the cspace. This `()` operator comes from DenseArray base class
-        // Loop through each grid point and check if any c space obstacle vertices/edges fall inside the grid. If so, mark as a collision
-
-/*
-    cspace(1, 3) = true;
-    cspace(3, 3) = true;
-    cspace(0, 1) = true;
-    cspace(1, 0) = true;
-    cspace(2, 0) = true;
-    cspace(3, 0) = true;
-    cspace(4, 1) = true;
-*/
 
     // Returning the object of type std::unique_ptr<MyGridCSpace2D> can automatically cast it to a polymorphic base-class pointer of type std::unique_ptr<amp::GridCSpace2D>.
     // The reason why this works is not super important for our purposes, but if you are curious, look up polymorphism!
