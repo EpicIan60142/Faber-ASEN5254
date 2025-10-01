@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
     Q_star.clear();
     for (int i = 0; i<probWS3.obstacles.size(); i++)
     {
-        Q_star.push_back(0.5);
+        Q_star.push_back(0.25);
     }
     MyGDAlgorithm algoWS3(d_star, zeta, Q_star, eta, epsilon);
     collision_points.clear();
