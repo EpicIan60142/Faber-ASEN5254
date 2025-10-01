@@ -21,14 +21,11 @@ class ObstacleChecker
             // convex.
         bool evaluatePrimitives(const Eigen::Vector2d &point, bool leftTurner);
 
-        /*
-            // Obsolete collision checking method. Loops through all obstacles and checks if the provided point collides
-            // with any of them. Assumes all obstacles in obstacleList are convex.
-        bool collidesWithPoint(const Eigen::Vector2d &point, bool all = true, int obstacleIndex = 0);
-        */
-
             // Propagates the proposed point onto the obstacle's closest boundary
         Collision calcPointOnBoundary(const Eigen::Vector2d &point, const Eigen::Vector2d lastPoint, Collision &collision, bool leftTurner);
+
+            // Calculates the closest distance to a specified obstacle and the gradient from the closest point to the provided point
+        std::pair<double, Eigen::Vector2d> calcClosestDistance(const Eigen::Vector2d &point, int obsIdx) const;
 
             // Calculates the centroid of an obstacle
         Eigen::Vector2d calcCentroid(const amp::Obstacle2D &obstacle, bool leftTurner);
