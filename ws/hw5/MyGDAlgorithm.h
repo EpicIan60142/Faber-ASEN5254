@@ -19,11 +19,15 @@ class MyGDAlgorithm : public amp::GDAlgorithm {
 			eta(eta),
 			epsilon(epsilon) {}
 
+		// Setter functions
+		void addQstar(double Qstar) {if (Qstar > 0.0){ Q_star.push_back(Qstar); }};
+
 		// Getter functions
 		double getdStar() const {return d_star;}
 		double getzeta() const {return zeta;}
 		std::vector<double> getQstar() const {return Q_star;}
 		double getEta() const {return eta;}
+		double getEpsilon() const {return epsilon;}
 
 		// Override this method to solve a given problem.
 		virtual amp::Path2D plan(const amp::Problem2D& problem) override;
@@ -31,7 +35,7 @@ class MyGDAlgorithm : public amp::GDAlgorithm {
 		double d_star, zeta, eta, epsilon;
 		std::vector<double> Q_star;
 		// Add additional member variables here...
-		double alpha = 0.1; // Gradient step size
+		double alpha = 0.01; // Gradient step size
 		int maxLoopCount = 1e5; // Maximum number of loops to avoid infinite looping
 };
 
@@ -86,11 +90,16 @@ class MyPotentialFunction : public amp::PotentialFunction2D {
 
 			// Loop through obstacles and build potential
 			double U_rep = 0;
-			for (int i = 0; i < Q_star.size(); i++)
+			for (int i = 0; i < prob.obstacles.size(); i++)
 			{
 				std::pair<double, Eigen::Vector2d> result = obsCheck.calcClosestDistance(q, i);
 
 				double d = result.first;
+
+				if (d <= 0.5*algo.getEpsilon())
+				{
+					d = 0.5*algo.getEpsilon();
+				}
 
 				if (d <= Q_star[i])
 				{
@@ -115,7 +124,7 @@ class MyPotentialFunction : public amp::PotentialFunction2D {
 				// Compute gradient
 			if (d <= dStar)
 			{
-				return zeta*(q-q_goal);//{zeta*(q[0] - q_goal[0]), zeta*(q[1] - q_goal[1]) };
+				return zeta*(q-q_goal); //{zeta*(q[0] - q_goal[0]), zeta*(q[1] - q_goal[1]) };
 			}
 
 			return (dStar*zeta*(q-q_goal))/d; //{(dStar*zeta*(q[0]-q_goal[0]))/d, (dStar*zeta*(q[1]-q_goal[1]))/d};
@@ -135,12 +144,17 @@ class MyPotentialFunction : public amp::PotentialFunction2D {
 
 			// Loop through obstacles and build gradient
 			Eigen::Vector2d gradU_rep = {0,0};
-			for (int i = 0; i < Q_star.size(); i++)
+			for (int i = 0; i < prob.obstacles.size(); i++)
 			{
 				std::pair<double, Eigen::Vector2d> result = obsCheck.calcClosestDistance(q, i);
 
 				double d = result.first;
 				Eigen::Vector2d grad = result.second;
+
+				if (d <= 0.5*algo.getEpsilon())
+				{
+					d = 0.5*algo.getEpsilon();
+				}
 
 				if (d <= Q_star[i])
 				{
@@ -152,7 +166,6 @@ class MyPotentialFunction : public amp::PotentialFunction2D {
 			return gradU_rep;
 
 		}
-
 
 	private:
 		MyGDAlgorithm algo;

@@ -207,7 +207,7 @@ Collision ObstacleChecker::calcPointOnBoundary(const Eigen::Vector2d& point, con
     return collision;
 }
 
-std::pair<double, Eigen::Vector2d> ObstacleChecker::calcClosestDistance(const Eigen::Vector2d& point, int obsIdx) const
+std::pair<double, Eigen::Vector2d> ObstacleChecker::calcClosestDistance(const Eigen::Vector2d& point, const int obsIdx) const
 {
         // Extract the obstacle of interest
     amp::Obstacle2D obstacle = obstacleList[obsIdx];
@@ -237,18 +237,29 @@ std::pair<double, Eigen::Vector2d> ObstacleChecker::calcClosestDistance(const Ei
         // Project point onto boundary vector and translate to global frame - this is the vector to the intersection
         // point on the boundary
         Eigen::Vector2d r_PF = point - firstVertex;
+        /*
         Eigen::Vector2d r_IF = (r_PF.dot(r_B)/r_B.squaredNorm()) * r_B;
         Eigen::Vector2d r_I = r_IF + firstVertex;
+        */
 
+        /*
         // Sort x and y coordinates in increasing order
         Eigen::Vector2d xCoords = (firstVertex[0] <= secondVertex[0]) ? Eigen::Vector2d{firstVertex[0], secondVertex[0]} : Eigen::Vector2d{secondVertex[0], firstVertex[0]};
         Eigen::Vector2d yCoords = (firstVertex[1] <= secondVertex[1]) ? Eigen::Vector2d{firstVertex[1], secondVertex[1]} : Eigen::Vector2d{secondVertex[1], firstVertex[1]};
 
         // Intersection point isn't valid if it falls outside the two vertices
-        if (!(r_I[0] >= xCoords[0] && r_I[0] <= xCoords[1] && r_I[1] >= yCoords[0] && r_I[1] <= yCoords[1]))
+        if (!(r_I[0] > xCoords[0] && r_I[0] < xCoords[1] && r_I[1] > yCoords[0] && r_I[1] < yCoords[1]))
         {
             continue;
         }
+        */
+
+        // Calculate projection parameter to find intersection point along the boundary
+        double t = r_PF.dot(r_B)/r_B.squaredNorm();
+        t = std::clamp(t, 0.0, 1.0); // Ensure we always get a point - if projection is off the boundary, then it is at a vertex
+
+        // Calculate intersection vector
+        Eigen::Vector2d r_I = firstVertex + r_B*t;
 
         // Calculate vector to point from intersection
         Eigen::Vector2d r_PI = point - r_I;
@@ -259,6 +270,12 @@ std::pair<double, Eigen::Vector2d> ObstacleChecker::calcClosestDistance(const Ei
             minDistance = r_PI.norm();
             closestIntersect = r_PI;
         }
+    }
+
+    if (minDistance < 1e-3)
+    {
+        minDistance = 1e-3;
+        //return {minDistance, Eigen::Vector2d::Zero()};
     }
 
     Eigen::Vector2d minGradient = closestIntersect/minDistance;
