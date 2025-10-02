@@ -125,215 +125,6 @@ bool ObstacleChecker::evaluatePrimitives(const Eigen::Vector2d &point, bool left
     return !collisionList.empty();
 }
 
-/*
- * OBSOLETE
-/// @brief Function that checks all obstacles in a workspace for collisions with a proposed point
-/// @param point proposed point to check collisions with
-/// @param all Boolean indicating whether to check all obstacles or just one
-/// @param obstacleIndex Index of obstacle to check if all is false
-bool ObstacleChecker::collidesWithPoint(const Eigen::Vector2d &point, bool all, int obstacleIndex)
-{
-    if (all)
-    {
-        // Reset collisions
-        collisionList.clear();
-
-        // Loop through all obstacles and check for collisions. A point collides with an obstacle if its distance vector
-        // to the obstacle centroid is less than the distance vector from an obstacle's boundary point to the centroid
-        for (int i = 0; i < obstacleList.size(); i++)
-        {
-            // Extract obstacle of interest
-            amp::Obstacle2D obstacle = obstacleList[i];
-
-            // Calculate centroid of obstacle
-            double xSum = 0; double ySum = 0;
-            for (int ii = 0; ii < obstacle.verticesCCW().size(); ii++)
-            {
-                xSum += obstacle.verticesCCW()[ii][0];
-                ySum += obstacle.verticesCCW()[ii][1];
-            }
-            auto centroid = Eigen::Vector2d(xSum / obstacle.verticesCCW().size(), ySum / obstacle.verticesCCW().size());
-
-            // Calculate vector from proposed point to centroid. This gives a direction to the inside of the obstacle.
-            Eigen::Vector2d r_CP = centroid - point;
-
-            // Calculate slope of the current position vector
-            double mPoint = point[1] / point[0];
-
-            // Determine if vector will intersect a boundary
-            for (int ii = 0; ii < obstacle.verticesCCW().size()-1; ii++)
-            {
-                // Extract vertices
-                Eigen::Vector2d firstVertex = obstacle.verticesCCW()[ii];
-                Eigen::Vector2d secondVertex = obstacle.verticesCCW()[ii + 1];
-
-                // Calculate slope of boundary
-                double mBound;
-                if (secondVertex[0] - firstVertex[0] == 0) // Boundary is vertical
-                {
-                    if (secondVertex[1] - firstVertex[1] > 0) // Boundary goes from bottom to top
-                    {
-                        mBound = 99999;
-                    }
-                    else
-                    {
-                        mBound = -99999;
-                    }
-                }
-                else if (secondVertex[1] - firstVertex[1] == 0) // Boundary is horizontal
-                {
-                    mBound = 0;
-                }
-                else
-                {
-                    mBound = (secondVertex[1] - firstVertex[1]) / (secondVertex[0] - firstVertex[0]); // rise / run
-                }
-
-                // If lines aren't parallel
-                if (mPoint != mBound)
-                {
-                    // Determine where the vector would intersect the boundary
-                    Eigen::Matrix2d A {{mBound, -1},
-                                        {mPoint, -1} };
-                    Eigen::Vector2d b {mBound*firstVertex[0] - firstVertex[1], mPoint*point[0] - point[1]};
-
-                    Eigen::Vector2d intersectRaw = A.colPivHouseholderQr().solve(b);
-                        // Round to nearest 10-thousandths place
-                    Eigen::Vector2d intersect {round(intersectRaw[0]*10000.0)/10000.0, round(intersectRaw[1]*10000.0)/10000.0};
-
-                    // Sort vertices by increasing x and y coordinate
-                    Eigen::Vector2d xVertices, yVertices;
-
-                    if (firstVertex[0] < secondVertex[0])
-                    {
-                        xVertices = {firstVertex[0], secondVertex[0]};
-                    }
-                    else
-                    {
-                        xVertices = {secondVertex[0], firstVertex[0]};
-                    }
-
-                    if (firstVertex[1] < secondVertex[1])
-                    {
-                        yVertices = {firstVertex[1], secondVertex[1]};
-                    }
-                    else
-                    {
-                        yVertices = {secondVertex[1], firstVertex[1]};
-                    }
-
-                    // If intersection point is inside the boundary, it is valid
-                    if (intersect[0] >= xVertices[0] && intersect[0] <= xVertices[1] && intersect[1] >= yVertices[0] && intersect[1] <= yVertices[1])
-                    {
-                        // Calculate vector from intersection point to centroid
-                        Eigen::Vector2d r_CI = centroid - intersect;
-
-                        // Determine if a collision occurred, i.e. the distance of the point to the centroid is less than
-                        // the distance from the intersection to the centroid
-                        if (r_CP.norm() < r_CI.norm())
-                        {
-                            Collision newCollision;
-
-                            newCollision.obstacle = obstacle;
-                            newCollision.centroid = centroid;
-                            newCollision.intersect = intersect;
-                            newCollision.firstBoundVertex = firstVertex;
-                            newCollision.secondBoundVertex = secondVertex;
-                            newCollision.firstBoundIndex = ii;
-                            newCollision.obstacleIndex = i;
-
-                            collisionList.push_back(newCollision);
-                        }
-                    }
-                }
-            }
-        }
-
-        // If we collided with any obstacles, report it
-        return collisionList.size() > 0;
-    }
-    else
-    {
-        bool collide = false;
-
-        // Extract obstacle of interest
-        amp::Obstacle2D obstacle = obstacleList[obstacleIndex];
-
-        // Calculate centroid of obstacle
-        double xSum = 0; double ySum = 0;
-        for (int ii = 0; ii < obstacle.verticesCCW().size(); ii++)
-        {
-            xSum += obstacle.verticesCCW()[ii][0];
-            ySum += obstacle.verticesCCW()[ii][1];
-        }
-        auto centroid = Eigen::Vector2d(xSum / obstacle.verticesCCW().size(), ySum / obstacle.verticesCCW().size());
-
-        // Calculate vector from proposed point to centroid and the slope of the vector
-        Eigen::Vector2d r_CP = centroid - point;
-        double mPoint = r_CP[1] / r_CP[0];
-
-        // Determine if vector will intersect a boundary
-        for (int ii = 0; ii < obstacle.verticesCCW().size()-1; ii++)
-        {
-            // Extract vertices
-            Eigen::Vector2d firstVertex = obstacle.verticesCCW()[ii];
-            Eigen::Vector2d secondVertex = obstacle.verticesCCW()[ii + 1];
-
-            // Calculate slope of boundary
-            double mBound = (secondVertex[1] - firstVertex[1]) / (secondVertex[0] - firstVertex[0]); // rise / run
-
-            // If lines aren't parallel
-            if (mPoint != mBound)
-            {
-                // Determine where the vector would intersect the boundary
-                Eigen::Matrix2d A {{mBound, -1},
-                                    {mPoint, -1} };
-                Eigen::Vector2d b {mBound*firstVertex[0] - firstVertex[1], mPoint*point[0] - point[1]};
-
-                Eigen::Vector2d intersect = A.colPivHouseholderQr().solve(b);
-
-                // Sort vertices by increasing x and y coordinate
-                Eigen::Vector2d xVertices, yVertices;
-
-                if (firstVertex[0] < secondVertex[0])
-                {
-                    xVertices = {firstVertex[0], secondVertex[0]};
-                }
-                else
-                {
-                    xVertices = {secondVertex[0], firstVertex[0]};
-                }
-
-                if (firstVertex[1] < secondVertex[1])
-                {
-                    yVertices = {firstVertex[1], secondVertex[1]};
-                }
-                else
-                {
-                    yVertices = {secondVertex[1], firstVertex[1]};
-                }
-
-                // If intersection point is inside the boundary, it is valid
-                if (intersect[0] >= xVertices[0] && intersect[0] <= xVertices[1] && intersect[1] >= yVertices[0] && intersect[1] <= yVertices[1])
-                {
-                    // Calculate vector from intersection point to centroid
-                    Eigen::Vector2d r_CI = centroid - intersect;
-
-                    // Determine if a collision occurred, i.e. the distance of the point to the centroid is less than
-                    // the distance from the intersection to the centroid
-                    if (r_CP.norm() < r_CI.norm())
-                    {
-                        collide = true;
-                    }
-                }
-            }
-        }
-
-        return collide;
-    }
-}
-*/
-
 /// @brief function that determines which boundary a point is closest to and its propagated point on that boundary
 /// @param point Proposed point to propagate into obstacle
 /// @param lastPoint The point before the proposed point in the path sequence
@@ -415,6 +206,83 @@ Collision ObstacleChecker::calcPointOnBoundary(const Eigen::Vector2d& point, con
 
     return collision;
 }
+
+std::pair<double, Eigen::Vector2d> ObstacleChecker::calcClosestDistance(const Eigen::Vector2d& point, const int obsIdx) const
+{
+        // Extract the obstacle of interest
+    amp::Obstacle2D obstacle = obstacleList[obsIdx];
+
+        // Loop over boundaries, project point onto boundary, and check resulting distance. Save the minimum distance.
+    double minDistance = 9e9;
+    Eigen::Vector2d closestIntersect;
+    const std::vector<Eigen::Vector2d> &vertices = obstacle.verticesCCW();
+    const int numBoundaries = vertices.size();
+    for (int i = 0; i < numBoundaries; i++)
+    {
+        // Extract vertices
+        Eigen::Vector2d firstVertex = vertices[i];
+        Eigen::Vector2d secondVertex;
+        if (i == numBoundaries - 1)
+        {
+            secondVertex = vertices[0];
+        }
+        else
+        {
+            secondVertex = vertices[i + 1];
+        }
+
+        // Calculate boundary vector
+        Eigen::Vector2d r_B = secondVertex - firstVertex;
+
+        // Project point onto boundary vector and translate to global frame - this is the vector to the intersection
+        // point on the boundary
+        Eigen::Vector2d r_PF = point - firstVertex;
+        /*
+        Eigen::Vector2d r_IF = (r_PF.dot(r_B)/r_B.squaredNorm()) * r_B;
+        Eigen::Vector2d r_I = r_IF + firstVertex;
+        */
+
+        /*
+        // Sort x and y coordinates in increasing order
+        Eigen::Vector2d xCoords = (firstVertex[0] <= secondVertex[0]) ? Eigen::Vector2d{firstVertex[0], secondVertex[0]} : Eigen::Vector2d{secondVertex[0], firstVertex[0]};
+        Eigen::Vector2d yCoords = (firstVertex[1] <= secondVertex[1]) ? Eigen::Vector2d{firstVertex[1], secondVertex[1]} : Eigen::Vector2d{secondVertex[1], firstVertex[1]};
+
+        // Intersection point isn't valid if it falls outside the two vertices
+        if (!(r_I[0] > xCoords[0] && r_I[0] < xCoords[1] && r_I[1] > yCoords[0] && r_I[1] < yCoords[1]))
+        {
+            continue;
+        }
+        */
+
+        // Calculate projection parameter to find intersection point along the boundary
+        double t = r_PF.dot(r_B)/r_B.squaredNorm();
+        t = std::clamp(t, 0.0, 1.0); // Ensure we always get a point - if projection is off the boundary, then it is at a vertex
+
+        // Calculate intersection vector
+        Eigen::Vector2d r_I = firstVertex + r_B*t;
+
+        // Calculate vector to point from intersection
+        Eigen::Vector2d r_PI = point - r_I;
+
+        // Save minimum distance if it's smaller than the currently saved value
+        if (r_PI.norm() < minDistance)
+        {
+            minDistance = r_PI.norm();
+            closestIntersect = r_PI;
+        }
+    }
+
+    if (minDistance < 1e-3)
+    {
+        minDistance = 1e-3;
+        //return {minDistance, Eigen::Vector2d::Zero()};
+    }
+
+    Eigen::Vector2d minGradient = closestIntersect/minDistance;
+
+    return {minDistance, minGradient};
+}
+
 
 /// @brief Function that calculates the centroid of a provided obstacle
 /// @param obstacle Obstacle to calculate centroid of
