@@ -41,8 +41,10 @@ int main(int argc, char** argv) {
             // Check solution
     bool WS1success = HW5::check(pathWS1, probWS1, collision_points);
             // Make figures
-    //Visualizer::makeFigure(probWS1, pathWS1, collision_points);
-    //Visualizer::makeFigure(MyPotentialFunction{algoWS1, probWS1}, probWS1, n_grid);
+    Visualizer::makeFigure(probWS1, pathWS1, collision_points);
+    Visualizer::makeFigure(MyPotentialFunction{algoWS1, probWS1}, probWS1, n_grid);
+            // Report path length
+    std::cout << "HW 5 WS 1 Path length: " << pathWS1.length() << std::endl;
 
         // HW 2 Workspace 1
     Problem2D probWS2 = HW2::getWorkspace1();
@@ -56,8 +58,9 @@ int main(int argc, char** argv) {
     collision_points.clear();
     Path2D pathWS2 = algoWS2.plan(probWS2);
     bool WS2success = HW5::check(pathWS2, probWS2, collision_points);
-    //Visualizer::makeFigure(probWS2, pathWS2, collision_points);
-    //Visualizer::makeFigure(MyPotentialFunction{algoWS2, probWS2}, probWS2, n_grid);
+    Visualizer::makeFigure(probWS2, pathWS2, collision_points);
+    Visualizer::makeFigure(MyPotentialFunction{algoWS2, probWS2}, probWS2, n_grid);
+    std::cout << "HW 2 WS 1 Path length: " << pathWS2.length() << std::endl;
 
         // HW 2 Workspace 2
     Problem2D probWS3 = HW2::getWorkspace2();
@@ -70,20 +73,22 @@ int main(int argc, char** argv) {
     collision_points.clear();
     Path2D pathWS3 = algoWS3.plan(probWS3);
     bool WS3success = HW5::check(pathWS3, probWS3, collision_points);
-    //Visualizer::makeFigure(probWS3, pathWS3, collision_points);
-    //Visualizer::makeFigure(MyPotentialFunction{algoWS3, probWS3}, probWS3, n_grid);
+    Visualizer::makeFigure(probWS3, pathWS3, collision_points);
+    Visualizer::makeFigure(MyPotentialFunction{algoWS3, probWS3}, probWS3, n_grid);
+    std::cout << "HW 2 WS 2 Path length: " << pathWS3.length() << std::endl;
 
         // Random problem
-    MyGDAlgorithm algo(d_star, zeta, Q_star, eta, epsilon);
+    MyGDAlgorithm algoRWS(d_star, zeta, Q_star, eta, epsilon);
     collision_points.clear();
-    Path2D path;
-    Problem2D prob;
-    bool success = HW5::generateAndCheck(algo, path, prob, collision_points);
-    //Visualizer::makeFigure(prob, path);
-    //Visualizer::makeFigure(MyPotentialFunction{algo, prob}, prob, n_grid);
+    Path2D pathRWS;
+    Problem2D probRWS;
+    bool success = HW5::generateAndCheck(algoRWS, pathRWS, probRWS, collision_points);
+    Visualizer::makeFigure(probRWS, pathRWS);
+    Visualizer::makeFigure(MyPotentialFunction{algoRWS, probRWS}, probRWS, n_grid);
+    std::cout << "Random WS Path length: " << pathRWS.length() << std::endl;
 
         // Save figures
-    //Visualizer::saveFigures(true, "hw5_figs");
+    Visualizer::saveFigures(true, "hw5_figs_new");
     
     // Arguments following argv correspond to the constructor arguments of MyGDAlgorithm:
     Q_star.clear();
