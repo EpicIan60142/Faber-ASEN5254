@@ -97,6 +97,17 @@ amp::ManipulatorState Manipulator2D::getConfigurationFromIK(const Eigen::Vector2
         joint_angles[0] = atan2(sin1,cos1);
         joint_angles[1] = atan2(sin2,cos2);
 
+            // Make sure angles are between 0 and 2pi
+        if (joint_angles[0] < 0)
+        {
+            joint_angles[0] += 2*M_PI;
+        }
+
+        if (joint_angles[1] < 0)
+        {
+            joint_angles[1] += 2*M_PI;
+        }
+
         return joint_angles;
     }
     else if (nLinks() == 3)
@@ -173,13 +184,45 @@ amp::ManipulatorState Manipulator2D::getConfigurationFromIK(const Eigen::Vector2
                         // If solution is good enough, terminate function
                         if (error < 1e-6)
                         {
+                            // Make sure angles are between 0 and 2pi
+                            if (joint_angles[0] < 0)
+                            {
+                                joint_angles[0] += 2*M_PI;
+                            }
+
+                            if (joint_angles[1] < 0)
+                            {
+                                joint_angles[1] += 2*M_PI;
+                            }
+
+                            if (joint_angles[2] < 0)
+                            {
+                                joint_angles[2] += 2*M_PI;
+                            }
+
                             return joint_angles;
                         }
                     }
                 }
             }
         }
-    
+
+        // Make sure angles are between 0 and 2pi
+        if (joint_angles[0] < 0)
+        {
+            joint_angles[0] += 2*M_PI;
+        }
+
+        if (joint_angles[1] < 0)
+        {
+            joint_angles[1] += 2*M_PI;
+        }
+
+        if (joint_angles[2] < 0)
+        {
+            joint_angles[2] += 2*M_PI;
+        }
+
         // Return the best solution found, even if not perfect
         return joint_angles;
     }

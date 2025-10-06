@@ -173,6 +173,7 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
     // Unwrap initial configuration if this is a manipulator
     Eigen::Vector2d bounds0;
     Eigen::Vector2d bounds1;
+    /*
     if (isManipulator)
     {
         // Set valid bounds for CSpace path
@@ -181,6 +182,7 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
 
         amp::unwrapWaypoints(path.waypoints, bounds0, bounds1);
     }
+    */
 
     // Get starting cell
     std::pair<std::size_t, std::size_t> cell = grid_cspace.getCellFromPoint(path.waypoints.back()[0], path.waypoints.back()[1]);
@@ -274,6 +276,7 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
     path.waypoints.push_back(q_goal);
 
         // Unwrap path angles if this is a manipulator
+
     if (isManipulator)
     {
             // Set valid bounds for CSpace path
@@ -282,6 +285,7 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
 
         amp::unwrapWaypoints(path.waypoints, bounds0, bounds1);
     }
+
 
     return path;
 }
