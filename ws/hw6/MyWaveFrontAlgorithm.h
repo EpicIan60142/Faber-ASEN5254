@@ -7,12 +7,11 @@
 #include "hw/HW4.h"
 #include "hw/HW6.h"
 
-#include "CSpace.h"
-
 class MyWaveFrontAlgorithm : public amp::WaveFrontAlgorithm {
     public:
         virtual amp::Path2D planInCSpace(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal, const amp::GridCSpace2D& grid_cspace, bool isManipulator) override;
-
+    private:
+        int maxLoopCount = 1e5;
 };
 
 class MyWaveFrontGridSpace : public amp::ConfigurationSpace2D, public amp::DenseArray2D<int>
@@ -26,5 +25,4 @@ class MyWaveFrontGridSpace : public amp::ConfigurationSpace2D, public amp::Dense
         virtual bool inCollision(double x0, double x1) const override {
             return false;
         }
-
 };

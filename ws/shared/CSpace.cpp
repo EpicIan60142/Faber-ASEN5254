@@ -33,6 +33,21 @@ std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, 
     return {cell_x, cell_y};
 }
 
+Eigen::Vector2d MyGridCSpace2D::getPointFromCell(std::pair<std::size_t, std::size_t> cell) const
+{
+        // Extract x0 and x1 bounds
+    std::pair<double, double> x0Bounds = this->x0Bounds();
+    std::pair<double, double> x1Bounds = this->x1Bounds();
+
+        // Calculate midpoint of given cell
+    double x0 = ((cell.first + 0.5)/this->size().first)*(x0Bounds.second - x0Bounds.first) + x0Bounds.first;
+    double x1 = ((cell.second + 0.5)/this->size().second)*(x1Bounds.second - x1Bounds.first) + x1Bounds.first;
+
+        // Return as a vector
+    return Eigen::Vector2d(x0, x1);
+}
+
+
 // Override this method for computing all of the boolean collision values for each cell in the cspace
 std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const amp::LinkManipulator2D& manipulator, const amp::Environment2D& env)
 {
