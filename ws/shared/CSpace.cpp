@@ -162,20 +162,6 @@ std::unique_ptr<amp::GridCSpace2D> MyPointAgentCSConstructor::construct(const am
         }
     }
 
-    /*
-    //std::cout << "Constructing C-space for point agent" << std::endl;
-    // Determine if each cell is in collision or not, and store the values the cspace. This `()` operator comes from DenseArray base class
-    cspace(0, 0) = true;
-    cspace(1, 1) = true;
-    cspace(2, 2) = true;
-    cspace(3, 3) = true;
-    cspace(4, 4) = true;
-    cspace(0, 4) = true;
-    cspace(1, 3) = true;
-    cspace(3, 1) = true;
-    cspace(4, 0) = true;
-    */
-
     // Returning the object of type std::unique_ptr<MyGridCSpace2D> can automatically cast it to a polymorphic base-class pointer of type std::unique_ptr<amp::GridCSpace2D>.
     // The reason why this works is not super important for our purposes, but if you are curious, look up polymorphism!
     return cspace_ptr;

@@ -19,8 +19,21 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
     std::vector<std::pair<std::size_t, std::size_t>> wavefront; // Grid indices to be checked for validity, then get assigned wave levels
     std::vector<std::pair<std::size_t, std::size_t>> checked; // Grid indices that have been assigned already
 
+    // Make sure we start with a valid goal configuration
+    Eigen::Vector2d q_goal_copy = q_goal;
+    if (isManipulator)
+    {
+        for (int i = 0; i < q_goal_copy.size(); i++)
+        {
+            if (q_goal_copy[i] < 0)
+            {
+                q_goal_copy[i] += 2*M_PI;
+            }
+        }
+    }
+
     // Get cell index of goal point
-    std::pair<std::size_t, std::size_t> goalIdx = grid_cspace.getCellFromPoint(q_goal[0], q_goal[1]);
+    std::pair<std::size_t, std::size_t> goalIdx = grid_cspace.getCellFromPoint(q_goal_copy[0], q_goal_copy[1]);
 
     // Assign distance values for obstacles and goal to grid
     for (int i = 0; i < n_cells.first; i++)
@@ -122,13 +135,6 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
                 candidateCells.push_back({candidateWavefront[i].first-1, candidateWavefront[i].second}); // Left cell
             }
 
-            /*
-            candidateCells.push_back({candidateWavefront[i].first, candidateWavefront[i].second+1}); // Above cell
-            candidateCells.push_back({candidateWavefront[i].first, candidateWavefront[i].second-1}); // Below cell
-            candidateCells.push_back({candidateWavefront[i].first+1, candidateWavefront[i].second}); // Right cell
-            candidateCells.push_back({candidateWavefront[i].first-1, candidateWavefront[i].second}); // Left cell
-            */
-
             // Loop over candidate cells
             for (int j = 0; j < candidateCells.size(); j++)
             {
@@ -168,21 +174,23 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
     amp::Path2D path;
 
     // Add starting point to path
-    path.waypoints.push_back(q_init);
+        // Make sure we start with a valid configuration
+    Eigen::Vector2d q_init_copy = q_init;
+    if (isManipulator)
+    {
+        for (int i = 0; i < q_init_copy.size(); i++)
+        {
+            if (q_init_copy[i] < 0)
+            {
+                q_init_copy[i] += 2*M_PI;
+            }
+        }
+    }
+    path.waypoints.push_back(q_init_copy);
 
     // Unwrap initial configuration if this is a manipulator
     Eigen::Vector2d bounds0;
     Eigen::Vector2d bounds1;
-    /*
-    if (isManipulator)
-    {
-        // Set valid bounds for CSpace path
-        bounds0 = Eigen::Vector2d(0.0, 0.0);
-        bounds1 = Eigen::Vector2d(2*M_PI, 2*M_PI);
-
-        amp::unwrapWaypoints(path.waypoints, bounds0, bounds1);
-    }
-    */
 
     // Get starting cell
     std::pair<std::size_t, std::size_t> cell = grid_cspace.getCellFromPoint(path.waypoints.back()[0], path.waypoints.back()[1]);
@@ -273,10 +281,9 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
         loopCount++;
     }
 
-    path.waypoints.push_back(q_goal);
+    path.waypoints.push_back(q_goal_copy);
 
         // Unwrap path angles if this is a manipulator
-
     if (isManipulator)
     {
             // Set valid bounds for CSpace path

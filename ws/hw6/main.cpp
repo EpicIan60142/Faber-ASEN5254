@@ -49,7 +49,6 @@ int main(int argc, char** argv) {
     ManipulatorWaveFrontAlgorithm manip_algoWS2(wf_algo, manipulator_ctorWS2);
     ManipulatorWaveFrontAlgorithm manip_algoWS3(wf_algo, manipulator_ctorWS3);
 
-    /*
     // Return a path for the point-agent and manipulator using c-space planning.
         // HW 2 WS 1
     Path2D pathWS1 = point_algoWS1.plan(point_problemWS1);
@@ -78,8 +77,6 @@ int main(int argc, char** argv) {
     Visualizer::makeFigure(manip_problemWS3, manipulator, trajectoryWS3);
     Visualizer::makeFigure(*manip_algoWS3.getCSpace(), trajectoryWS3);
 
-    */
-
         // Random point WS
     std::vector<Eigen::Vector2d> collision_points;
     std::shared_ptr<MyPointAgentCSConstructor> point_agent_ctorRWS = std::make_shared<MyPointAgentCSConstructor>(100, 100);
@@ -102,12 +99,26 @@ int main(int argc, char** argv) {
 
 
     // For Exercise 3, you will need to implement the A* algorithm.
-    ShortestPathProblem problem = HW6::getEx3SPP();
-    LookupSearchHeuristic heuristic = HW6::getEx3Heuristic();
-    MyAStarAlgo algo;
-    MyAStarAlgo::GraphSearchResult result = algo.search(problem, heuristic);
+        // A* algorithm
+    std::cout << "Exercise 3 A* algorithm" << std::endl;
+    ShortestPathProblem problemAstar = HW6::getEx3SPP();
+    LookupSearchHeuristic heuristicAstar = HW6::getEx3Heuristic();
+    MyAStarAlgo algoAstar;
+    MyAStarAlgo::GraphSearchResult resultAstar = algoAstar.search(problemAstar, heuristicAstar);
 
-    //Visualizer::saveFigures(true, "hw6_figs");
+        // Dijkstra's algorithm
+    std::cout << "Exercise 3 Dijkstra's algorithm" << std::endl;
+    ShortestPathProblem problemDijkstra = HW6::getEx3SPP();
+    LookupSearchHeuristic heuristicDijkstra = HW6::getEx3Heuristic();
+            // "Turn off" heuristic by setting values to 0
+    for (int i = 0; i < heuristicDijkstra.heuristic_values.size(); i++)
+    {
+        heuristicDijkstra.heuristic_values[i] = 0;
+    }
+    MyAStarAlgo algoDijkstra;
+    MyAStarAlgo::GraphSearchResult resultDijkstra = algoDijkstra.search(problemDijkstra, heuristicDijkstra);
+
+    Visualizer::saveFigures(true, "hw6_figs_new");
 
     amp::HW6::grade<PointWaveFrontAlgorithm, ManipulatorWaveFrontAlgorithm, MyAStarAlgo>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(wf_algo, point_agent_ctorRWS), std::make_tuple(wf_algo, manipulator_ctorRWS), std::make_tuple());
     return 0;
