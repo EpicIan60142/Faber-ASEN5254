@@ -8,7 +8,10 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/shared")
             shared/ObstacleChecker.cpp
             shared/ObstacleChecker.h
             shared/Collision.h
-            shared/mLineIntersection.h)
+            shared/mLineIntersection.h
+            shared/CSpace.h
+            shared/Manipulator2D.h
+            shared/MyAStar.h)
     target_link_libraries(user_library PRIVATE
         yaml-cpp
         Eigen3::Eigen
