@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
             // Time benchmark
     std::list<std::vector<double>> dataSet = times;
     std::vector<std::string> labels = {"Case 1", "Case 2", "Case 3", "Case 4", "Case 5", "Case 6", "Case 7", "Case 8"};
-    std::string title = "PRM Time Benchmark";
+    std::string title = "PRM Time Benchmark - Exercise 2a of HW 5";
     std::string xlabel = " ";
     std::string ylabel = "Elapsed Time [ms]";
     Visualizer::makeBoxPlot(dataSet, labels, title, xlabel, ylabel);
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
             // Path length benchmark
     dataSet = lengths;
     labels = {"Case 1", "Case 2", "Case 3", "Case 4", "Case 5", "Case 6", "Case 7", "Case 8"};
-    title = "PRM Length Benchmark";
+    title = "PRM Length Benchmark - Exercise 2a of HW 5";
     xlabel = " ";
     ylabel = "Path Length";
     Visualizer::makeBoxPlot(dataSet, labels, title, xlabel, ylabel);
@@ -122,10 +122,113 @@ int main(int argc, char** argv) {
             // Validity benchmark
     std::vector<double> dataSet2 = validSols;
     labels = {"Case 1", "Case 2", "Case 3", "Case 4", "Case 5", "Case 6", "Case 7", "Case 8"};
-    title = "PRM Validity Benchmark";
+    title = "PRM Validity Benchmark - Exercise 2a of HW 5";
     xlabel = " ";
     ylabel = "Number of Valid Solutions";
     Visualizer::makeBarGraph(dataSet2, labels, title, xlabel, ylabel);
+
+    // Benchmark PRM for HW 2
+    for (int k = 0; k < 2; k++)
+    {
+            // Choose workspace to benchmark
+        amp::Problem2D problem;
+        switch (k)
+        {
+            case 0:
+                problem = problem_HW2WS1;
+            case 1:
+                problem = problem_HW2WS2;
+            default:
+                problem = problem_HW2WS1;
+        }
+
+            // Make vectors for results
+        validSols.clear();
+        times.clear();
+        lengths.clear();
+            // Make vector of test parameters
+        testSuite = {{200, 1}, {200, 2}, {500, 1}, {500, 2}, {1000, 1}, {1000, 2}};
+            // Loop over test parameters and benchmark each set
+        for (int i = 0; i < testSuite.size(); i++)
+        {
+            std::cout << "Benchmarking PRM with parameters: n = " << testSuite[i].first << ", r = " << testSuite[i].second << std::endl;
+            int nRuns = 100;
+            int validCount = 0;
+            std::vector<double> timeCol;
+            std::vector<double> lengthCol;
+            for (int j = 0; j < nRuns; j++)
+            {
+                MyPRM prm_benchmark;
+                prm_benchmark.setParameters(testSuite[i].first, testSuite[i].second);
+                amp::Timer PRMTimer("PRMTimer");
+                amp::Path2D pathPRM_benchmark = prm_benchmark.plan(problem);
+                double time = PRMTimer.now(TimeUnit::ms);
+                if (abs(time) < 10000) // Sometimes the timer messes up and we get massive times, want to avoid that
+                {
+                    timeCol.push_back(time);
+                }
+
+                if (pathPRM_benchmark.valid)
+                {
+                    validCount++;
+                    lengthCol.push_back(pathPRM_benchmark.length());
+                }
+                else
+                {
+                    lengthCol.push_back(0);
+                }
+            }
+            times.push_back(timeCol);
+            lengths.push_back(lengthCol);
+            validSols.push_back(validCount);
+        }
+
+            // Make box plots
+                // Time benchmark
+        dataSet = times;
+        labels = {"Case 1", "Case 2", "Case 3", "Case 4", "Case 5", "Case 6"};
+        if (k == 0)
+        {
+            title = "PRM Time Benchmark - W1 of HW 2";
+        }
+        else
+        {
+            title = "PRM Time Benchmark - W2 of HW 2";
+        }
+        xlabel = " ";
+        ylabel = "Elapsed Time [ms]";
+        Visualizer::makeBoxPlot(dataSet, labels, title, xlabel, ylabel);
+
+                // Path length benchmark
+        dataSet = lengths;
+        labels = {"Case 1", "Case 2", "Case 3", "Case 4", "Case 5", "Case 6"};
+        if (k == 0)
+        {
+            title = "PRM Length Benchmark - W1 of HW 2";
+        }
+        else
+        {
+            title = "PRM Length Benchmark - W2 of HW 2";
+        }
+        xlabel = " ";
+        ylabel = "Path Length";
+        Visualizer::makeBoxPlot(dataSet, labels, title, xlabel, ylabel);
+
+                // Validity benchmark
+        dataSet2 = validSols;
+        labels = {"Case 1", "Case 2", "Case 3", "Case 4", "Case 5", "Case 6"};
+        if (k == 0)
+        {
+            title = "PRM Validity Benchmark - W1 of HW 2";
+        }
+        else
+        {
+            title = "PRM Validity Benchmark - W2 of HW 2";
+        }
+        xlabel = " ";
+        ylabel = "Number of Valid Solutions";
+        Visualizer::makeBarGraph(dataSet2, labels, title, xlabel, ylabel);
+    }
 
     // Generate a random problem and test RRT
     Problem2D problem;
@@ -135,7 +238,7 @@ int main(int argc, char** argv) {
     nodes.clear();
     HW7::generateAndCheck(rrt, path, problem);
     Visualizer::makeFigure(problem, path, *graphPtr, nodes);
-    Visualizer::saveFigures(true, "hw7_figs");
+    Visualizer::saveFigures(true, "hw7_figs_PRMBenchmark");
 
     // Grade method
     HW7::grade<MyPRM, MyRRT>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(500,3), std::make_tuple());
