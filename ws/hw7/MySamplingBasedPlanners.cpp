@@ -3,7 +3,7 @@
 #include "CSpace.h"
 #include "MyAStar.h"
 
-amp::Path GenericPRM::plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, const int nSample, const double rConnect, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::Vector2d> &nodes)
+amp::Path GenericPRM::plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, const int nSample, const double rConnect, const bool smooth, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::Vector2d> &nodes)
 {
         // Make graph pointer
     std::shared_ptr<amp::Graph<double>> graphPtr = graph;
@@ -81,6 +81,73 @@ amp::Path GenericPRM::plan(const Eigen::VectorXd &init_state, const Eigen::Vecto
     MyAStarAlgo algo;
     MyAStarAlgo::GraphSearchResult result = algo.search(problem, amp::SearchHeuristic());
 
+        // Step 5: Attempt to smooth path if smoothing is enabled
+    if (smooth && result.success)
+    {
+            // Get number of nodes in original path
+        const size_t nNodes = result.node_path.size();
+            // Set up random number generation
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        static std::uniform_int_distribution<size_t> dist(1, nNodes);
+            // Set up a smaller graph just made up of the valid path
+        std::shared_ptr<amp::Graph<double>> smoothGraphPtr = std::make_shared<amp::Graph<double>>();
+        smoothGraphPtr->clear();
+        for (int i = 0; i < nNodes-1; i++)
+        {
+            auto it = result.node_path.begin();
+            std::advance(it, i);
+            const amp::Node node1 = *it;
+            it = result.node_path.begin();
+            std::advance(it, i+1);
+            const amp::Node node2 = *it;
+            smoothGraphPtr->connect(node1, node2, 1);
+        }
+
+        //smoothGraphPtr->print();
+
+            // Try to directly connect nodes in the path
+        for (int i = 0; i < nSample; i++)
+        {
+                // Generate index of valid path nodes to try and connect
+            const size_t node1Idx = dist(gen);
+            const size_t node2Idx = dist(gen);
+
+                // Get node corresponding to that index
+            auto it = result.node_path.begin();
+            std::advance(it, node1Idx);
+            const amp::Node node1 = *it;
+            it = result.node_path.begin();
+            std::advance(it, node2Idx);
+            const amp::Node node2 = *it;
+
+            bool collided = false;
+            Eigen::VectorXd rB = nodes[node2] - nodes[node1];
+            for (double t = 0; t < 1; t += 0.01)
+            {
+                Eigen::VectorXd candidatePoint = nodes[node1] + t * rB;
+                if (cspace.inCollision(candidatePoint))
+                {
+                    collided = true;
+                    break;
+                }
+            }
+            // Connect nodes if they didn't collide
+            if (!collided)
+            {
+                // Connect with edge lengths of 1 for PRM
+                smoothGraphPtr->connect(node1, node2, 1);
+            }
+        }
+
+        //smoothGraphPtr->print();
+
+            // Rerun the search algorithm and update graph pointer
+        graphPtr = smoothGraphPtr;
+        amp::ShortestPathProblem smoothProblem(graphPtr, 0, 1);
+        result = algo.search(smoothProblem, amp::SearchHeuristic());
+    }
+
     amp::Path path;
 
     if (result.success)
@@ -118,7 +185,7 @@ amp::Path2D MyPRM::plan(const amp::Problem2D& problem) {
     GridCSpaceAdapter adapter(*cspace);
 
     // Call generic planner
-    amp::Path path_nd = GenericPRM::plan(problem.q_init, problem.q_goal, adapter, nSample, rConnect, graphPtr, nodes);
+    amp::Path path_nd = GenericPRM::plan(problem.q_init, problem.q_goal, adapter, nSample, rConnect, smooth, graphPtr, nodes);
 
     // Convert path to 2D
     std::vector<Eigen::Vector2d> waypoints_2d = path_nd.getWaypoints2D();
