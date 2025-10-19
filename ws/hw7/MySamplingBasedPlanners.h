@@ -62,7 +62,7 @@ class MyPRM : public amp::PRM2D, public GenericPRM {
         bool smooth = false; // Whether we attempt to smooth the computed path or not
 };
 
-class MyRRT : public amp::GoalBiasRRT2D {
+class MyRRT : public amp::GoalBiasRRT2D, GenericRRT {
     public:
             // Constructors
         MyRRT(){};
@@ -71,9 +71,41 @@ class MyRRT : public amp::GoalBiasRRT2D {
 
             // Planning method
         virtual amp::Path2D plan(const amp::Problem2D& problem) override;
+
+            // Getters and setters
+        void setParameters(const int newNSample, const double newRConnect, const double newPGoal, const double newEpsilon)
+        {
+            if (nSample > 0) {
+                this->nSample = newNSample;
+            }
+            if (rConnect > 0) {
+                this->rConnect = newRConnect;
+            }
+            if (pGoal > 0) {
+                this->pGoal = newPGoal;
+            }
+            if (epsilon > 0){
+                this->epsilon = newEpsilon;
+            }
+        }
+
+        std::shared_ptr<amp::Graph<double>> getGraph()
+        {
+            return graphPtr;
+        }
+
+        std::map<amp::Node, Eigen::Vector2d> getNodes()
+        {
+            return nodes;
+        }
+
     private:
-        int nSample = 5000;
-        double rConnect = 0.5;
-        double pGoal = 0.05;
-        double epsilon = 0.25;
+        int nSample = 5000; // Number of random samples to make
+        double rConnect = 0.5; // Radius to define connecting configurations
+        double pGoal = 0.05; // Probability of selecting the goal point as a configuration
+        double epsilon = 0.25; // Criterion for being close enough to the goal
+        double gridSize = 0.25; // CSpace grid size
+        std::shared_ptr<amp::Graph<double>> graphPtr = std::make_shared<amp::Graph<double>>(); // Graph
+        std::map<amp::Node, Eigen::Vector2d> nodes; // Nodes
+
 };
