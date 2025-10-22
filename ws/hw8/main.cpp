@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     Visualizer::makeFigure(problem, path, collision_states);
 
     // Visualize and grade methods
-    Visualizer::showFigures(true, "hw8_figs");
-    HW8::grade<MyCentralPlanner, MyDecentralPlanner>("firstName.lastName@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple());
+    Visualizer::saveFigures(true, "hw8_figs");
+    HW8::grade<MyCentralPlanner, MyDecentralPlanner>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple());
     return 0;
 }
