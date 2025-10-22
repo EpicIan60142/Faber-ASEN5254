@@ -27,8 +27,10 @@ std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, 
         // Compute where the provided point falls in the grid
     double x0Ratio = (x0 - x0Min) / (x0Max - x0Min);
     double x1Ratio = (x1 - x1Min) / (x1Max - x1Min);
-    std::size_t cell_x = x0Ratio * x0Cells;
-    std::size_t cell_y = x1Ratio * x1Cells;
+
+        // Clamp cell index to valid range if x0, x1 was out of bounds
+    std::size_t cell_x = std::min(static_cast<std::size_t>(x0Ratio * x0Cells), x0Cells - 1);
+    std::size_t cell_y = std::min(static_cast<std::size_t>(x1Ratio * x1Cells), x1Cells - 1);
 
     return {cell_x, cell_y};
 }
@@ -156,7 +158,7 @@ std::unique_ptr<amp::GridCSpace2D> MyPointAgentCSConstructor::construct(const am
                 // Assign cspace collision
             if (collided)
             {
-                cspace(cellIdx.first, cellIdx.second) = true;
+                cspace(i, j) = true;
             }
 
         }
@@ -165,5 +167,19 @@ std::unique_ptr<amp::GridCSpace2D> MyPointAgentCSConstructor::construct(const am
     // Returning the object of type std::unique_ptr<MyGridCSpace2D> can automatically cast it to a polymorphic base-class pointer of type std::unique_ptr<amp::GridCSpace2D>.
     // The reason why this works is not super important for our purposes, but if you are curious, look up polymorphism!
     return cspace_ptr;
+}
+
+// Function for checking if a point is within N-dimensional C space bounds
+bool isWithinBounds(const Eigen::VectorXd &point, const amp::ConfigurationSpace &cspace)
+{
+    for (int i = 0; i < point.size(); i++)
+    {
+        if (point[i] < cspace.lowerBounds()[i] || point[i] > cspace.upperBounds()[i])
+        {
+            return false;
+        }
+    }
+    return true;
+
 }
 

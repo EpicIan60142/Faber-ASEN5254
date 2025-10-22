@@ -27,6 +27,26 @@ class MyGridCSpace2D : public amp::GridCSpace2D {
 
 };
 
+// Adapter class to make GridCSpace2D compatible with ConfigurationSpace
+class GridCSpaceAdapter : public amp::ConfigurationSpace {
+    public:
+        GridCSpaceAdapter(const amp::GridCSpace2D& cspace)
+            : amp::ConfigurationSpace(Eigen::Vector2d(cspace.x0Bounds().first, cspace.x1Bounds().first),
+                                     Eigen::Vector2d(cspace.x0Bounds().second, cspace.x1Bounds().second)),
+              grid_cspace(cspace) {}
+
+        virtual bool inCollision(const Eigen::VectorXd& cspace_state) const override {
+            if (cspace_state.size() != 2) {
+                throw std::invalid_argument("Expected 2D configuration space state");
+            }
+            return grid_cspace.inCollision(cspace_state[0], cspace_state[1]);
+        }
+
+    private:
+            const amp::GridCSpace2D& grid_cspace;
+};
+
+
 // Derive the HW4 ManipulatorCSConstructor class and override the missing method
 class MyManipulatorCSConstructor : public amp::ManipulatorCSConstructor {
     public:
@@ -53,5 +73,8 @@ private:
     std::size_t m_x1_cells;
     std::size_t m_x2_cells;
 };
+
+    // Function for checking if a point is within the bounds of an N-D Cspace
+bool isWithinBounds(const Eigen::VectorXd &point, const amp::ConfigurationSpace &cspace);
 
 #endif //AMP_TOOLS_CSPACE_H

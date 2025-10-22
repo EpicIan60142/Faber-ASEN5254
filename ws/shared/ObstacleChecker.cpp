@@ -237,22 +237,6 @@ std::pair<double, Eigen::Vector2d> ObstacleChecker::calcClosestDistance(const Ei
         // Project point onto boundary vector and translate to global frame - this is the vector to the intersection
         // point on the boundary
         Eigen::Vector2d r_PF = point - firstVertex;
-        /*
-        Eigen::Vector2d r_IF = (r_PF.dot(r_B)/r_B.squaredNorm()) * r_B;
-        Eigen::Vector2d r_I = r_IF + firstVertex;
-        */
-
-        /*
-        // Sort x and y coordinates in increasing order
-        Eigen::Vector2d xCoords = (firstVertex[0] <= secondVertex[0]) ? Eigen::Vector2d{firstVertex[0], secondVertex[0]} : Eigen::Vector2d{secondVertex[0], firstVertex[0]};
-        Eigen::Vector2d yCoords = (firstVertex[1] <= secondVertex[1]) ? Eigen::Vector2d{firstVertex[1], secondVertex[1]} : Eigen::Vector2d{secondVertex[1], firstVertex[1]};
-
-        // Intersection point isn't valid if it falls outside the two vertices
-        if (!(r_I[0] > xCoords[0] && r_I[0] < xCoords[1] && r_I[1] > yCoords[0] && r_I[1] < yCoords[1]))
-        {
-            continue;
-        }
-        */
 
         // Calculate projection parameter to find intersection point along the boundary
         double t = r_PF.dot(r_B)/r_B.squaredNorm();
