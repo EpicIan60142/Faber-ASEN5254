@@ -11,7 +11,8 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/shared")
             shared/mLineIntersection.h
             shared/CSpace.h
             shared/Manipulator2D.h
-            shared/MyAStar.h)
+            shared/MyAStar.h
+            shared/MySamplingBasedPlanners.h)
     target_link_libraries(user_library PRIVATE
         yaml-cpp
         Eigen3::Eigen

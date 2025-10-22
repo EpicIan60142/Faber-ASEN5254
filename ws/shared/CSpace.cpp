@@ -5,6 +5,20 @@
 #include "CSpace.h"
 #include "ObstacleChecker.h"
 
+// Function for checking if a point is within N-dimensional C space bounds
+bool isWithinBounds(const Eigen::VectorXd &point, const amp::ConfigurationSpace &cspace)
+{
+    for (int i = 0; i < point.size(); i++)
+    {
+        if (point[i] < cspace.lowerBounds()[i] || point[i] > cspace.upperBounds()[i])
+        {
+            return false;
+        }
+    }
+    return true;
+
+}
+
 // Override this method for determining which cspace cell a point is inside of
 std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, double x1) const
 {
@@ -169,17 +183,52 @@ std::unique_ptr<amp::GridCSpace2D> MyPointAgentCSConstructor::construct(const am
     return cspace_ptr;
 }
 
-// Function for checking if a point is within N-dimensional C space bounds
-bool isWithinBounds(const Eigen::VectorXd &point, const amp::ConfigurationSpace &cspace)
+// Checks whether any agents collide with obstacles in the environment
+bool MultiAgentCSpace::agentEnvCollision(const Eigen::VectorXd& metaState) const
 {
-    for (int i = 0; i < point.size(); i++)
+    ObstacleChecker obsCheck2 = obsCheck;
+
+    // Loop over all agents and check if they collide with obstacles
+    for (int i = 0; i < numAgents; i++)
     {
-        if (point[i] < cspace.lowerBounds()[i] || point[i] > cspace.upperBounds()[i])
+        // Extract agent position
+        Eigen::Vector2d agentPos = metaState.segment(agentSize*i, agentSize);
+
+        // Loop over obstacles and exit if the robot collides
+        for (const auto &obstacle : env.obstacles)
         {
-            return false;
+            // Check if the provided agent state is within its radius to an obstacle
+            if (obsCheck2.checkPointInRadius(agentPos, obstacle, agentProps[i].radius))
+            {
+                return true;
+            }
         }
     }
-    return true;
+    return false;
+}
 
+bool MultiAgentCSpace::agentAgentCollision(const Eigen::VectorXd& metaState) const
+{
+    // Choose starting agent
+    for (int i = 0; i < numAgents; ++i)
+    {
+        // Check all other agents
+        for (int j = i + 1; j < numAgents; ++j)
+        {
+            // Get agent positions
+            Eigen::Vector2d pos_i = metaState.segment(i * agentSize, agentSize);
+            Eigen::Vector2d pos_j = metaState.segment(j * agentSize, agentSize);
+
+            // Calculate distance between agent centers
+            double distance = (pos_i - pos_j).norm();
+            double min_distance = agentProps[i].radius + agentProps[j].radius;
+
+            // If agents are closer than the sum of their radii, they've collided
+            if (distance < min_distance) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 

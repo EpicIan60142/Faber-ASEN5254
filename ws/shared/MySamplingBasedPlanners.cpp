@@ -3,7 +3,7 @@
 #include "CSpace.h"
 #include "MyAStar.h"
 
-amp::Path GenericPRM::plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, const int nSample, const double rConnect, const bool smooth, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::Vector2d> &nodes)
+amp::Path GenericPRM::plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, const int nSample, const double rConnect, const bool smooth, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::VectorXd> &nodes)
 {
         // Make graph pointer
     std::shared_ptr<amp::Graph<double>> graphPtr = graph;
@@ -170,7 +170,7 @@ amp::Path GenericPRM::plan(const Eigen::VectorXd &init_state, const Eigen::Vecto
     return path;
 }
 
-amp::Path GenericRRT::plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, const int nSample, const double rConnect, const double pGoal, const double epsilon, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::Vector2d> &nodes)
+amp::Path GenericRRT::plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, const int nSample, const double rConnect, const double pGoal, const double epsilon, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::VectorXd> &nodes)
 {
         // Make graph pointer
     std::shared_ptr<amp::Graph<double>> graphPtr = graph;
@@ -225,7 +225,7 @@ amp::Path GenericRRT::plan(const Eigen::VectorXd &init_state, const Eigen::Vecto
             // Test the path for collisions and add it to the graph if collision free
         bool collided = false;
         Eigen::VectorXd stepVector = candidatePoint - nodes[nearestNodeIdx];
-        for (double t = 0.001; t <= 1; t += 0.001)
+        for (double t = 0; t <= 1; t += 0.05)
         {
                 // Incrementally step along the unit vector and test for collisions or out of bounds
             Eigen::VectorXd testPoint = nodes[nearestNodeIdx] + t * stepVector;

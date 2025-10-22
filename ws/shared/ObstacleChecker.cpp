@@ -125,6 +125,55 @@ bool ObstacleChecker::evaluatePrimitives(const Eigen::Vector2d &point, bool left
     return !collisionList.empty();
 }
 
+bool ObstacleChecker::checkPointInRadius(const Eigen::Vector2d &point, const amp::Obstacle2D &obstacle, double radius)
+{
+    // Extract the obstacle vertices
+    std::vector<Eigen::Vector2d> vertices;
+    vertices = obstacle.verticesCCW();
+
+    // Check vertices for duplicates, and remove them if they are duplicate. Already sorted CW or CCW.
+    vertices = removeDuplicateVertices(vertices);
+
+    // Start obstacle min distance to robot as unbounded
+    double minDist = std::numeric_limits<double>::max();
+
+    // Loop through all boundaries and calculate their primitives
+    const unsigned long numBoundaries = vertices.size();
+    for (int i = 0; i < numBoundaries; i++)
+    {
+        // Extract vertices
+        Eigen::Vector2d firstVertex = vertices[i];
+        Eigen::Vector2d secondVertex;
+        if (i == numBoundaries - 1)
+        {
+            secondVertex = vertices[0];
+        }
+        else
+        {
+            secondVertex = vertices[i + 1];
+        }
+
+        // Calculate boundary vector
+        Eigen::Vector2d r_B = secondVertex - firstVertex;
+
+        // Project point onto boundary vector and translate to global frame - this is the vector to the intersection
+        // point on the boundary
+        Eigen::Vector2d r_PF = point - firstVertex;
+        double t = r_PF.dot(r_B)/r_B.squaredNorm();
+        t = std::max(0.0, std::min(1.0,t)); // Ensure intersection point is always on the boundary (between vertices or on a vertex)
+        Eigen::Vector2d r_IF = t * r_B;
+        Eigen::Vector2d r_I = r_IF + firstVertex;
+
+        // Calculate vector to point from intersection
+        Eigen::Vector2d r_PI = point - r_I;
+
+        // Calculate distance to the robot center
+        double dist = r_PI.norm();
+        minDist = std::min(minDist, dist);
+    }
+    return minDist <= radius;
+}
+
 /// @brief function that determines which boundary a point is closest to and its propagated point on that boundary
 /// @param point Proposed point to propagate into obstacle
 /// @param lastPoint The point before the proposed point in the path sequence

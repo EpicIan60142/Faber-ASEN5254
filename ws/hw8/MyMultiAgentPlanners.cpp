@@ -1,11 +1,12 @@
 #include "MyMultiAgentPlanners.h"
 
-amp::MultiAgentPath2D MyCentralPlanner::plan(const amp::MultiAgentProblem2D& problem) {
-    // Create a meta path
-    amp::Path path;
+#include "CSpace.h"
+#include "MySamplingBasedPlanners.h"
 
+amp::MultiAgentPath2D MyCentralPlanner::plan(const amp::MultiAgentProblem2D& problem) {
     // Create the meta-state
     Eigen::VectorXd meta_q_init;
+    Eigen::VectorXd meta_q_goal;
     int metaSize = 0;
 
         // Calculate total number of states
@@ -16,6 +17,7 @@ amp::MultiAgentPath2D MyCentralPlanner::plan(const amp::MultiAgentProblem2D& pro
 
         // Resize the meta-state
     meta_q_init.resize(metaSize);
+    meta_q_goal.resize(metaSize);
 
         // Fill in the meta-state
     int currentIndex = 0;
@@ -23,20 +25,39 @@ amp::MultiAgentPath2D MyCentralPlanner::plan(const amp::MultiAgentProblem2D& pro
     {
         int agentSize = agent.q_init.size();
         meta_q_init.segment(currentIndex, agentSize) = agent.q_init;
+        meta_q_goal.segment(currentIndex, agentSize) = agent.q_goal;
         currentIndex += agentSize;
     }
 
-    // Generate an initial C-space
+    // Create multi-agent C-space
+    MultiAgentCSpace cspace(problem.agent_properties, amp::Environment2D(problem.x_min, problem.x_max, problem.y_min, problem.y_max, problem.obstacles));
+
+    // Run Goal biased RRT planner
+    GenericRRT rrtPlanner;
+    amp::Path path = rrtPlanner.plan(meta_q_init, meta_q_goal, cspace, nSample, rConnect, pGoal, epsilon, graphPtr, nodes);
+
+    if (path.waypoints.size() < 2)
+    {
+        path.valid = false;
+    }
 
     // Assign each agent's path from the meta-state path
         // Define a multi-agent path object
     amp::MultiAgentPath2D multiAgentPath;
-        // Loop through each agent and pull out it's path from the meta-agent
-    for (const amp::CircularAgentProperties& agent : problem.agent_properties) {
+        // Loop through each agent and pull out its path from the meta-agent
+    for (int i = 0; i < problem.agent_properties.size(); i++)
+    {
         amp::Path2D agent_path;
-        agent_path.waypoints = {agent.q_init, agent.q_goal};
+        for (int j = 0; j < path.waypoints.size(); j++)
+        {
+            int agentSize = 2; //problem.agent_properties[i].q_init.size();
+            Eigen::VectorXd agentPos = path.waypoints[j].segment(agentSize*i, agentSize);
+            agent_path.waypoints.push_back(agentPos);
+        }
+        agent_path.waypoints.push_back(problem.agent_properties[i].q_goal);
         multiAgentPath.agent_paths.push_back(agent_path);
     }
+    multiAgentPath.valid = path.valid;
     return multiAgentPath;
 }
 

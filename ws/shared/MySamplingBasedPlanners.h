@@ -10,14 +10,14 @@
 class GenericPRM
 {
     public:
-        amp::Path plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, int nSample, double rConnect, bool smooth, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::Vector2d> &nodes);
+        amp::Path plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, int nSample, double rConnect, bool smooth, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::VectorXd> &nodes);
 };
 
 // Generic RRT planner as per homework hint
 class GenericRRT
 {
     public:
-        amp::Path plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, int nSample, double rConnect, double pGoal, double epsilon, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::Vector2d> &nodes);
+        amp::Path plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, int nSample, double rConnect, double pGoal, double epsilon, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::VectorXd> &nodes);
 };
 
 // Specific 2D planners
@@ -48,7 +48,7 @@ class MyPRM : public amp::PRM2D, public GenericPRM {
             return graphPtr;
         }
 
-        std::map<amp::Node, Eigen::Vector2d> getNodes()
+        std::map<amp::Node, Eigen::VectorXd> getNodes()
         {
             return nodes;
         }
@@ -58,7 +58,7 @@ class MyPRM : public amp::PRM2D, public GenericPRM {
         double rConnect = 1; // Radius to define connecting valid configurations
         double gridSize = 0.25; // CSpace grid size
         std::shared_ptr<amp::Graph<double>> graphPtr = std::make_shared<amp::Graph<double>>(); // Graph
-        std::map<amp::Node, Eigen::Vector2d> nodes; // Nodes
+        std::map<amp::Node, Eigen::VectorXd> nodes; // Nodes
         bool smooth = false; // Whether we attempt to smooth the computed path or not
 };
 
@@ -94,7 +94,7 @@ class MyRRT : public amp::GoalBiasRRT2D, GenericRRT {
             return graphPtr;
         }
 
-        std::map<amp::Node, Eigen::Vector2d> getNodes()
+        std::map<amp::Node, Eigen::VectorXd> getNodes()
         {
             return nodes;
         }
@@ -106,6 +106,6 @@ class MyRRT : public amp::GoalBiasRRT2D, GenericRRT {
         double epsilon = 0.25; // Criterion for being close enough to the goal
         double gridSize = 0.25; // CSpace grid size
         std::shared_ptr<amp::Graph<double>> graphPtr = std::make_shared<amp::Graph<double>>(); // Graph
-        std::map<amp::Node, Eigen::Vector2d> nodes; // Nodes
+        std::map<amp::Node, Eigen::VectorXd> nodes; // Nodes
 
 };
