@@ -215,11 +215,13 @@ bool MultiAgentCSpace::agentAgentCollision(const Eigen::VectorXd& metaState) con
     // Choose starting agent
     for (int i = 0; i < numAgents; ++i)
     {
+        // Get first agent position
+        Eigen::Vector2d pos_i = metaState.segment(i * agentSize, agentSize);
+
         // Check all other agents
         for (int j = i + 1; j < numAgents; ++j)
         {
-            // Get agent positions
-            Eigen::Vector2d pos_i = metaState.segment(i * agentSize, agentSize);
+            // Get second position
             Eigen::Vector2d pos_j = metaState.segment(j * agentSize, agentSize);
 
             // Calculate distance between agent centers
@@ -227,7 +229,8 @@ bool MultiAgentCSpace::agentAgentCollision(const Eigen::VectorXd& metaState) con
             double min_distance = agentProps[i].radius + agentProps[j].radius;
 
             // If agents are closer than the sum of their radii, they've collided
-            if (distance < min_distance) {
+            if (distance < min_distance)
+            {
                 return true;
             }
         }
@@ -255,39 +258,38 @@ bool DecoupledAgentCSpace::agentEnvCollision(const Eigen::VectorXd &q) const
 }
 
 // Checks whether an agent collides with a previous path at a specific moment in time
-bool DecoupledAgentCSpace::agentAgentCollision(const Eigen::VectorXd &q, const int waypointIdx, const int otherIdx) const
+bool DecoupledAgentCSpace::agentAgentCollision(const Eigen::VectorXd &q, int time) const
 {
-    // Determine how many agent paths to check
-    int numPaths = agentPaths.size();
-
-    // Loop through each path at the provided waypoint index and see if the proposed configuration conflicts
-    if (numPaths > 0)
+    // Loop over existing paths
+    for (int i = 0; i < agentPaths.size(); i++)
     {
-        for (int i = 0; i < numPaths; i++)
+        // Don't check for collisions with self
+        if (i == agentIdx) continue;
+
+        // Don't check for collisions with unplanned agents
+        //if (agentPaths[i].waypoints.size() <= 1) continue;
+
+        // Pull out path of the other agent at this timestep, or at the end of its path
+        Eigen::VectorXd otherPos;
+        if (time >= agentPaths[i].waypoints.size())
         {
-            // Pull out agent path and waypoint
-            amp::Path agentPath = agentPaths[i];
-            Eigen::VectorXd waypoint;
-            if (waypointIdx > agentPath.waypoints.size()) // If the requested waypoint is larger than the length of the previous agent's path, lock it to the final position in that path
-            {
-                waypoint = agentPath.waypoints.back();
-            }
-            else // Pull out the waypoint at this time, assuming all waypoints happen at the same time
-            {
-                waypoint = agentPath.waypoints[waypointIdx];
-            }
+            otherPos = agentPaths[i].waypoints.back();
+        }
+        else
+        {
+            otherPos = agentPaths[i].waypoints[time];
+        }
 
-            // Check if proposed configuration collides with previous waypoint
-            double distance = (q - waypoint).norm();
-            double min_distance = agentProps[agentIdx].radius + agentProps[otherIdx].radius;
+        // Calculate distance between agent centers
+        double dist = (q - otherPos.segment(0,2)).norm();
+        double minDist = agentProps[agentIdx].radius + agentProps[i].radius;
 
-            // If agents are closer than the sum of their radii, they've collided
-            if (distance < min_distance) {
-                return true;
-            }
+        // If distance between centers is less than the sum of their radii, they've collided
+        if (dist < minDist)
+        {
+            return true;
         }
     }
-
     return false;
 }
 

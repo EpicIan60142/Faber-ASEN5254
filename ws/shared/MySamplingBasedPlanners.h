@@ -6,6 +6,8 @@
 // Include the correct homework headers
 #include "hw/HW7.h"
 
+#include "CSpace.h"
+
 // Generic PRM planner as per homework hint
 class GenericPRM
 {
@@ -18,6 +20,7 @@ class GenericRRT
 {
     public:
         amp::Path plan(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, const amp::ConfigurationSpace &cspace, int nSample, double rConnect, double pGoal, double epsilon, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::VectorXd> &nodes);
+        amp::Path planDecoupled(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, DecoupledAgentCSpace &cspace, int nSample, double rConnect, double pGoal, double epsilon, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::VectorXd> &nodes);
 };
 
 // Specific 2D planners

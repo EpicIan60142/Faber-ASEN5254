@@ -294,6 +294,144 @@ amp::Path GenericRRT::plan(const Eigen::VectorXd &init_state, const Eigen::Vecto
     return path;
 }
 
+amp::Path GenericRRT::planDecoupled(const Eigen::VectorXd &init_state, const Eigen::VectorXd &goal_state, DecoupledAgentCSpace &cspace, int nSample, double rConnect, double pGoal, double epsilon, std::shared_ptr<amp::Graph<double>> &graph, std::map<amp::Node, Eigen::VectorXd> &nodes)
+{
+        // Make graph pointer
+    std::shared_ptr<amp::Graph<double>> graphPtr = graph;
+
+        // Make list of node times
+    std::map<amp::Node, int> nodeTimes;
+
+        // Add init_state as the root of the tree graph
+    nodes[0] = init_state;
+
+        // Start time at 0
+    nodeTimes[0] = 0;
+
+        // Start node index at 1, i.e. index of node to be added
+    size_t nodeIdx = 1;
+
+        // Take samples until a solution is found or we hit the max number of samples
+    bool pathFound = false;
+    for (int i = 0; i < nSample; i++)
+    {
+            // Set up random number generation to determine whether sample is goal_state or random
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        static std::uniform_real_distribution<double> dist(0, 1);
+        double rand = dist(gen);
+        Eigen::VectorXd randState;
+                // Choose goal_state with probability pGoal
+        if (rand <= pGoal)
+        {
+            randState = goal_state;
+        }
+                // Choose a random configuration with probability 1-pGoal
+        else
+        {
+                // Generate vector with values between 0 and 1, as ::Random() generates numbers between -1 and 1
+            Eigen::VectorXd randVec = Eigen::VectorXd::Random(init_state.size()) * 0.5 + Eigen::VectorXd::Ones(init_state.size()) * 0.5;
+                // Apply CSpace range
+            randState = cspace.lowerBounds() + (cspace.upperBounds() - cspace.lowerBounds()).cwiseProduct(randVec);
+        }
+
+            // Find nearest configuration to the sample point
+        double minDist = std::numeric_limits<double>::infinity();
+        size_t nearestNodeIdx = 0;
+        for (size_t j = 0; j < nodeIdx; j++)
+        {
+            Eigen::VectorXd nodeState = nodes[j];
+            double dist = (randState - nodeState).norm();
+            if (dist < minDist)
+            {
+                minDist = dist;
+                nearestNodeIdx = j;
+            }
+        }
+
+            // Get the time of the nearest node and increment it by 1 for the candidate point
+        int time = nodeTimes[nearestNodeIdx] + 1;
+        cspace.setTime(time);
+
+            // Construct a unit vector from the nearest tree node to the random node and construct a path that's rConnect along the unit vector
+        Eigen::VectorXd rB = randState - nodes[nearestNodeIdx];
+        Eigen::VectorXd rHatB = rB / rB.norm();
+        Eigen::VectorXd candidatePoint = nodes[nearestNodeIdx] + rConnect * rHatB;
+
+            // Test the path for collisions and add it to the graph if collision free
+        bool collided = false;
+        Eigen::VectorXd stepVector = candidatePoint - nodes[nearestNodeIdx];
+        for (double t = 0; t <= 1; t += 0.05)
+        {
+                // Incrementally step along the unit vector and test for collisions or out of bounds
+            Eigen::VectorXd testPoint = nodes[nearestNodeIdx] + t * stepVector;
+            if (!isWithinBounds(testPoint, cspace) || cspace.inCollision(testPoint))
+            {
+                collided = true;
+                break;
+            }
+        }
+
+            // Connect nodes if they didn't collide and add to the node map
+        if (!collided)
+        {
+                // Add candidate point to nodes map
+            nodes[nodeIdx] = candidatePoint;
+
+                // Set time for the new node
+            nodeTimes[nodeIdx] = time;
+
+                // Connect with edge lengths of 1 for RRT
+            graphPtr->connect(nearestNodeIdx, nodeIdx, 1);
+
+                // Check for path solution
+            if ((goal_state - nodes[nodeIdx]).norm() < epsilon)
+            {
+                pathFound = true;
+                break;
+            }
+                 // Increment node index
+            nodeIdx++;
+        }
+    }
+
+        // Add goal state to graph and graph search for the solution
+    amp::Path path;
+    if (pathFound)
+    {
+            // Add goal state as a node
+        nodes[nodeIdx+1] = goal_state;
+        graphPtr->connect(nodeIdx, nodeIdx+1, 1);
+
+            // Run A* on the tree
+        amp::ShortestPathProblem problem(graphPtr, 0, nodeIdx+1);
+        MyAStarAlgo algo;
+        MyAStarAlgo::GraphSearchResult result = algo.search(problem, amp::SearchHeuristic());
+
+        if (result.success)
+        {
+                // Add nodes in sequence
+            for (const auto &node : result.node_path)
+            {
+                path.waypoints.push_back(nodes[node]);
+            }
+            path.valid = true;
+        }
+        else
+        {
+            path.waypoints.push_back(init_state);
+            path.valid = false;
+        }
+
+    }
+    else
+    {
+        path.waypoints.push_back(init_state);
+        path.valid = false;
+    }
+
+    return path;
+}
 // Implement your PRM algorithm here
 amp::Path2D MyPRM::plan(const amp::Problem2D& problem) {
     // Make Cspace constructor and construct cspace

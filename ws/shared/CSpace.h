@@ -198,22 +198,27 @@ class DecoupledAgentCSpace : public amp::ConfigurationSpace
               agentIdx(agent_index)
         {
             obsCheck.setObstacles(env.obstacles);
+            time = 0;
         }
 
         // Collision checkers
         bool inCollision(const Eigen::VectorXd &q) const override // Override the default collision checker
         {
-            return !isWithinBounds(q, *this) || agentAgentCollision(q, 0, 1) || agentEnvCollision(q);
+            return !isWithinBounds(q, *this) || agentAgentCollision(q, time) || agentEnvCollision(q);
         }
 
-        bool inCollision(const Eigen::VectorXd &q, const int waypointIdx, const int otherIdx) const
+        // Time setter
+        void setTime(const int &newTime)
         {
-            return !isWithinBounds(q, *this) || agentAgentCollision(q, waypointIdx, otherIdx) || agentEnvCollision(q);
+            if (newTime > 0)
+            {
+                time = newTime;
+            }
         }
 
         // Collision helper functions
-        bool agentEnvCollision(const Eigen::VectorXd& q) const;
-        bool agentAgentCollision(const Eigen::VectorXd& q, const int waypointIdx, const int otherIdx) const;
+        bool agentEnvCollision(const Eigen::VectorXd &q) const;
+        bool agentAgentCollision(const Eigen::VectorXd &q, int time) const;
 
     private:
         // Private members
@@ -221,6 +226,7 @@ class DecoupledAgentCSpace : public amp::ConfigurationSpace
         amp::Environment2D env; // Environment with obstacles
         const std::vector<amp::Path> agentPaths; // Previously computed agent paths
         const int agentIdx; // Index of the agent we're making the Cspace for
+        mutable int time; // Current time
         ObstacleChecker obsCheck; // Obstacle checker object
 
         // Private methods

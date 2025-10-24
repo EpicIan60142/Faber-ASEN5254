@@ -114,7 +114,7 @@ amp::MultiAgentPath2D MyDecentralPlanner::plan(const amp::MultiAgentProblem2D& p
             nodes.clear();
                 // Run RRT planner
             GenericRRT rrtPlanner;
-            amp::Path path = rrtPlanner.plan(q_init, q_goal, cspace, nSample, rConnect, pGoal, epsilon, graphPtr, nodes);
+            amp::Path path = rrtPlanner.planDecoupled(q_init, q_goal, cspace, nSample, rConnect, pGoal, epsilon, graphPtr, nodes);
 
             // If path was valid, add it to previous paths. Otherwise, try again with different priority order
             if (path.valid)

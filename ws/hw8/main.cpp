@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
     // Control booleans
     bool runCentral = false;
     bool benchmarkCentral = false;
-    bool runDecoupled = true;
+    bool runDecoupled = false;
     bool benchmarkDecouple = false;
 
     // Centralized planning
@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
         path2agent = central_planner2agent.plan(problem2agent);
         bool isValid = HW8::check(path2agent, problem2agent, collision_states);
                 // Make a figure
-        Visualizer::makeFigure(problem2agent, path2agent, collision_states);
+        //Visualizer::makeFigure(problem2agent, path2agent, collision_states);
 
             // 3 agent problem
         MultiAgentPath2D path3agent;
@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
         std::cout << "Solving centralized 3 agent problem" << std::endl;
         path3agent = central_planner3agent.plan(problem3agent);
         isValid = HW8::check(path3agent, problem3agent, collision_states);
-        Visualizer::makeFigure(problem3agent, path3agent, collision_states);
+        //Visualizer::makeFigure(problem3agent, path3agent, collision_states);
 
             // 4 agent problem
         MultiAgentPath2D path4agent;
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
         std::cout << "Solving centralized 4 agent problem" << std::endl;
         path4agent = central_planner4agent.plan(problem4agent);
         isValid = HW8::check(path4agent, problem4agent, collision_states);
-        Visualizer::makeFigure(problem4agent, path4agent, collision_states);
+        //Visualizer::makeFigure(problem4agent, path4agent, collision_states);
 
             // 5 agent problem
         MultiAgentPath2D path5agent;
@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
         std::cout << "Solving centralized 5 agent problem" << std::endl;
         path5agent = central_planner5agent.plan(problem5agent);
         isValid = HW8::check(path5agent, problem5agent, collision_states);
-        Visualizer::makeFigure(problem5agent, path5agent, collision_states);
+        //Visualizer::makeFigure(problem5agent, path5agent, collision_states);
 
             // 6 agent problem
         MultiAgentPath2D path6agent;
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
         std::cout << "Solving centralized 6 agent problem" << std::endl;
         path6agent = central_planner6agent.plan(problem6agent);
         isValid = HW8::check(path6agent, problem6agent, collision_states);
-        Visualizer::makeFigure(problem6agent, path6agent, collision_states);
+        //Visualizer::makeFigure(problem6agent, path6agent, collision_states);
 
             // Random problem
         MultiAgentPath2D pathRandom;
@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
         central_plannerRandom.setParameters(7500, 0.5, 0.05, 0.25);
         std::cout << "Solving centralized random multi agent problem" << std::endl;
         HW8::generateAndCheck(central_plannerRandom, pathRandom, problemRandom, collision_states);
-        Visualizer::makeFigure(problemRandom, pathRandom, collision_states);
+        //Visualizer::makeFigure(problemRandom, pathRandom, collision_states);
 
         // Centralized benchmarking
         if (benchmarkCentral)
@@ -199,9 +199,12 @@ int main(int argc, char** argv) {
             std::cout << std::endl;
 
             // Create boxplots
-            Visualizer::makeBoxPlot(computeTimes, labels, "Centralized Planning Time Benchmark", "Number of Agents", "Elapsed Time [ms]");
-            Visualizer::makeBoxPlot(treeSizes, labels, "Centralized Planning Tree Size Benchmark", "Number of Agents", "Tree Size");
+            //Visualizer::makeBoxPlot(computeTimes, labels, "Centralized Planning Time Benchmark", "Number of Agents", "Elapsed Time [ms]");
+            //Visualizer::makeBoxPlot(treeSizes, labels, "Centralized Planning Tree Size Benchmark", "Number of Agents", "Tree Size");
         }
+
+        // Visualize centralized planner
+        //Visualizer::saveFigures(true, "hw8_figs_Centralized");
     }
 
     // Decoupled planning
@@ -216,7 +219,51 @@ int main(int argc, char** argv) {
         std::cout << "Solving decoupled 2 agent problem" << std::endl;
         path2agent = decentral_planner2agent.plan(problem2agent);
         bool isValid = HW8::check(path2agent, problem2agent, collision_states);
-        Visualizer::makeFigure(problem2agent, path2agent, collision_states);
+        //Visualizer::makeFigure(problem2agent, path2agent, collision_states);
+
+            // 3 agent problem
+        MultiAgentPath2D path3agent;
+        MultiAgentProblem2D problem3agent = HW8::getWorkspace1(3);
+        collision_states.clear();
+        MyDecentralPlanner decentral_planner3agent;
+        decentral_planner3agent.setParameters(7500, 0.5, 0.05, 0.25);
+        std::cout << "Solving decoupled 3 agent problem" << std::endl;
+        path3agent = decentral_planner3agent.plan(problem3agent);
+        isValid = HW8::check(path3agent, problem3agent, collision_states);
+        //Visualizer::makeFigure(problem3agent, path3agent, collision_states);
+
+            // 4 agent problem
+        MultiAgentPath2D path4agent;
+        MultiAgentProblem2D problem4agent = HW8::getWorkspace1(4);
+        collision_states.clear();
+        MyDecentralPlanner decentral_planner4agent;
+        decentral_planner4agent.setParameters(7500, 0.5, 0.05, 0.25);
+        std::cout << "Solving decoupled 4 agent problem" << std::endl;
+        path4agent = decentral_planner4agent.plan(problem4agent);
+        isValid = HW8::check(path4agent, problem4agent, collision_states);
+        //Visualizer::makeFigure(problem4agent, path4agent, collision_states);
+
+            // 5 agent problem
+        MultiAgentPath2D path5agent;
+        MultiAgentProblem2D problem5agent = HW8::getWorkspace1(5);
+        collision_states.clear();
+        MyDecentralPlanner decentral_planner5agent;
+        decentral_planner5agent.setParameters(7500, 0.5, 0.05, 0.25);
+        std::cout << "Solving decoupled 5 agent problem" << std::endl;
+        path5agent = decentral_planner5agent.plan(problem5agent);
+        isValid = HW8::check(path5agent, problem5agent, collision_states);
+        //Visualizer::makeFigure(problem5agent, path5agent, collision_states);
+
+            // 6 agent problem
+        MultiAgentPath2D path6agent;
+        MultiAgentProblem2D problem6agent = HW8::getWorkspace1(6);
+        collision_states.clear();
+        MyDecentralPlanner decentral_planner6agent;
+        decentral_planner6agent.setParameters(7500, 0.5, 0.05, 0.25);
+        std::cout << "Solving decoupled 6 agent problem" << std::endl;
+        path6agent = decentral_planner6agent.plan(problem6agent);
+        isValid = HW8::check(path6agent, problem6agent, collision_states);
+        //Visualizer::makeFigure(problem6agent, path6agent, collision_states);
 
             // Random problem
         MultiAgentPath2D path;
@@ -225,18 +272,19 @@ int main(int argc, char** argv) {
         collision_states = {{}};
         std::cout << "Solving decoupled random multi agent problem" << std::endl;
         HW8::generateAndCheck(decentral_planner, path, problem, collision_states);
-        Visualizer::makeFigure(problem, path, collision_states);
+        //Visualizer::makeFigure(problem, path, collision_states);
 
         // Decoupled benchmarking
         if (benchmarkDecouple)
         {
 
         }
+
+        // Visualize decoupled planner
+        //Visualizer::saveFigures(true, "hw8_figs_Decoupled");
     }
 
-
-    // Visualize and grade methods
-    Visualizer::saveFigures(true, "hw8_figs");
+    // Grade planners
     HW8::grade<MyCentralPlanner, MyDecentralPlanner>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple());
 
     return 0;
