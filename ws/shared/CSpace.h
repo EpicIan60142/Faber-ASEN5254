@@ -97,22 +97,20 @@ class MultiAgentCSpace : public amp::ConfigurationSpace
         // Collision checker
         bool inCollision(const Eigen::VectorXd& metaState) const override
         {
-            return agentEnvCollision(metaState) || agentAgentCollision(metaState) || !isWithinBounds(metaState, *this);
+            return !isWithinBounds(metaState, *this) || agentAgentCollision(metaState) || agentEnvCollision(metaState);
         }
 
         // Collision helper functions
         bool agentEnvCollision(const Eigen::VectorXd& metaState) const;
         bool agentAgentCollision(const Eigen::VectorXd& metaState) const;
 
-        // Public members
-        ObstacleChecker obsCheck;
-
     private:
         // Private members
-        std::vector<amp::CircularAgentProperties> agentProps;
-        amp::Environment2D env;
-        int agentSize;
-        int numAgents;
+        std::vector<amp::CircularAgentProperties> agentProps; // Properties for each agent
+        amp::Environment2D env; // Environment with obstacles
+        int agentSize; // Dimensions of each agents' state
+        int numAgents; // Number of agents in meta state
+        ObstacleChecker obsCheck; // Obstacle checker object
 
         // Private methods
             // Calculate lower Cspace bounds
@@ -180,6 +178,97 @@ class MultiAgentCSpace : public amp::ConfigurationSpace
                 }
                 currentIndex += agentSize;
             }
+            return upperBounds;
+        }
+};
+
+// Class for a decoupled multi-agent C-space
+class DecoupledAgentCSpace : public amp::ConfigurationSpace
+{
+    public:
+        // Constructor
+        DecoupledAgentCSpace(const std::vector<amp::CircularAgentProperties> &agent_properties,
+                             const amp::Environment2D &env,
+                             const std::vector<amp::Path> &agent_paths,
+                             const int &agent_index)
+            : amp::ConfigurationSpace(computeLowerBounds(agent_properties, agent_index, env), computeUpperBounds(agent_properties, agent_index, env)),
+              agentProps(agent_properties),
+              env(env),
+              agentPaths(agent_paths),
+              agentIdx(agent_index)
+        {
+            obsCheck.setObstacles(env.obstacles);
+        }
+
+        // Collision checkers
+        bool inCollision(const Eigen::VectorXd &q) const override // Override the default collision checker
+        {
+            return !isWithinBounds(q, *this) || agentAgentCollision(q, 0, 1) || agentEnvCollision(q);
+        }
+
+        bool inCollision(const Eigen::VectorXd &q, const int waypointIdx, const int otherIdx) const
+        {
+            return !isWithinBounds(q, *this) || agentAgentCollision(q, waypointIdx, otherIdx) || agentEnvCollision(q);
+        }
+
+        // Collision helper functions
+        bool agentEnvCollision(const Eigen::VectorXd& q) const;
+        bool agentAgentCollision(const Eigen::VectorXd& q, const int waypointIdx, const int otherIdx) const;
+
+    private:
+        // Private members
+        std::vector<amp::CircularAgentProperties> agentProps; // Properties for each agent
+        amp::Environment2D env; // Environment with obstacles
+        const std::vector<amp::Path> agentPaths; // Previously computed agent paths
+        const int agentIdx; // Index of the agent we're making the Cspace for
+        ObstacleChecker obsCheck; // Obstacle checker object
+
+        // Private methods
+            // Calculate lower Cspace bounds
+        static Eigen::VectorXd computeLowerBounds(const std::vector<amp::CircularAgentProperties> &agent_properties, const int agentIdx, const amp::Environment2D &env)
+        {
+            // Determine agent state size and assign bound size
+            int agentSize = agent_properties[agentIdx].q_init.size();
+            Eigen::VectorXd lowerBounds(agentSize);
+
+            // Assign agent lower bounds
+            for (int i = 0; i < agentSize; ++i)
+            {
+                // We are assuming a 2D environment here!
+                if (i == 0)
+                {
+                    lowerBounds[i] = env.x_min; // x coordinate
+                }
+                else
+                {
+                    lowerBounds[i] = env.y_min; // y coordinate
+                }
+            }
+
+            return lowerBounds;
+        }
+
+            // Calculate upper Cspace bounds
+        static Eigen::VectorXd computeUpperBounds(const std::vector<amp::CircularAgentProperties> &agent_properties, const int agentIdx, const amp::Environment2D &env)
+        {
+            // Determine agent state size
+            int agentSize = agent_properties[agentIdx].q_init.size();
+            Eigen::VectorXd upperBounds(agentSize);
+
+            // Assign agent upper bounds
+            for (int i = 0; i < agentSize; ++i)
+            {
+                // Assuming 2D environment!
+                if (i == 0)
+                {
+                    upperBounds[i] = env.x_max; // x coordinate
+                }
+                else
+                {
+                    upperBounds[i] = env.y_max; // y coordinate
+                }
+            }
+
             return upperBounds;
         }
 };

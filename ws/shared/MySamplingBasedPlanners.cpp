@@ -324,7 +324,6 @@ amp::Path2D MyPRM::plan(const amp::Problem2D& problem) {
     return path_2d;
 }
 
-
 // Implement your RRT algorithm here
 amp::Path2D MyRRT::plan(const amp::Problem2D& problem) {
     // Make Cspace constructor and construct cspace
