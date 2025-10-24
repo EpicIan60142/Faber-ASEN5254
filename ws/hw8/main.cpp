@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
     // Control booleans
     bool runCentral = false;
     bool benchmarkCentral = false;
-    bool runDecoupled = false;
+    bool runDecoupled = true;
     bool benchmarkDecouple = false;
 
     // Centralized planning
@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
         }
 
         // Visualize centralized planner
-        //Visualizer::saveFigures(true, "hw8_figs_Centralized");
+        Visualizer::saveFigures(true, "hw8_figs_Centralized");
     }
 
     // Decoupled planning
@@ -281,7 +281,7 @@ int main(int argc, char** argv) {
         }
 
         // Visualize decoupled planner
-        //Visualizer::saveFigures(true, "hw8_figs_Decoupled");
+        Visualizer::saveFigures(true, "hw8_figs_Decoupled");
     }
 
     // Grade planners

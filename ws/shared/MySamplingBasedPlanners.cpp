@@ -358,19 +358,41 @@ amp::Path GenericRRT::planDecoupled(const Eigen::VectorXd &init_state, const Eig
         Eigen::VectorXd rHatB = rB / rB.norm();
         Eigen::VectorXd candidatePoint = nodes[nearestNodeIdx] + rConnect * rHatB;
 
-            // Test the path for collisions and add it to the graph if collision free
+            // Ensure we're collision free on both sides of the time edge
         bool collided = false;
-        Eigen::VectorXd stepVector = candidatePoint - nodes[nearestNodeIdx];
-        for (double t = 0; t <= 1; t += 0.05)
+        for (int j = 0; j < 2; j++)
         {
-                // Incrementally step along the unit vector and test for collisions or out of bounds
-            Eigen::VectorXd testPoint = nodes[nearestNodeIdx] + t * stepVector;
-            if (!isWithinBounds(testPoint, cspace) || cspace.inCollision(testPoint))
+            if (collided)
             {
-                collided = true;
                 break;
             }
+                // Check previous and current time for a collision
+            switch (j)
+            {
+                case 0:
+                    cspace.setTime(time-1);
+                    break;
+                case 1:
+                    cspace.setTime(time);
+                    break;
+                default:
+                    break;
+            }
+
+            // Test the path for collisions and add it to the graph if collision free
+            Eigen::VectorXd stepVector = candidatePoint - nodes[nearestNodeIdx];
+            for (double t = 0; t <= 1; t += 0.05)
+            {
+                    // Incrementally step along the unit vector and test for collisions or out of bounds
+                Eigen::VectorXd testPoint = nodes[nearestNodeIdx] + t * stepVector;
+                if (!isWithinBounds(testPoint, cspace) || cspace.inCollision(testPoint))
+                {
+                    collided = true;
+                    break;
+                }
+            }
         }
+
 
             // Connect nodes if they didn't collide and add to the node map
         if (!collided)
