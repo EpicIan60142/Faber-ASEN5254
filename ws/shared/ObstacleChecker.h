@@ -16,10 +16,13 @@ class ObstacleChecker
             // Default constructor
         ObstacleChecker() = default;
 
-            // Primitive evaluation function - collision checking method. Loops through all obtacles and calculates if
+            // Primitive evaluation function - collision checking method. Loops through all obstacles and calculates if
             // all their primitives are negative. If so, we've collided. Assumes all obstacles in obstacleList are
             // convex.
         bool evaluatePrimitives(const Eigen::Vector2d &point, bool leftTurner);
+
+            // Function that checks whether an obstacle is within some radius of a point
+        bool checkPointInRadius(const Eigen::Vector2d &point, const amp::Obstacle2D &obstacle, double radius);
 
             // Propagates the proposed point onto the obstacle's closest boundary
         Collision calcPointOnBoundary(const Eigen::Vector2d &point, const Eigen::Vector2d lastPoint, Collision &collision, bool leftTurner);

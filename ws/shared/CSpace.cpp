@@ -5,6 +5,20 @@
 #include "CSpace.h"
 #include "ObstacleChecker.h"
 
+// Function for checking if a point is within N-dimensional C space bounds
+bool isWithinBounds(const Eigen::VectorXd &point, const amp::ConfigurationSpace &cspace)
+{
+    for (int i = 0; i < point.size(); i++)
+    {
+        if (point[i] < cspace.lowerBounds()[i] || point[i] > cspace.upperBounds()[i])
+        {
+            return false;
+        }
+    }
+    return true;
+
+}
+
 // Override this method for determining which cspace cell a point is inside of
 std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, double x1) const
 {
@@ -35,6 +49,7 @@ std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, 
     return {cell_x, cell_y};
 }
 
+// Function for determining a configuration from a cell
 Eigen::Vector2d MyGridCSpace2D::getPointFromCell(std::pair<std::size_t, std::size_t> cell) const
 {
         // Extract x0 and x1 bounds
@@ -169,17 +184,114 @@ std::unique_ptr<amp::GridCSpace2D> MyPointAgentCSConstructor::construct(const am
     return cspace_ptr;
 }
 
-// Function for checking if a point is within N-dimensional C space bounds
-bool isWithinBounds(const Eigen::VectorXd &point, const amp::ConfigurationSpace &cspace)
+// Checks whether any agents collide with obstacles in the environment in a centralized planner
+bool MultiAgentCSpace::agentEnvCollision(const Eigen::VectorXd& metaState) const
 {
-    for (int i = 0; i < point.size(); i++)
+    // Copy the obstacle checker object, otherwise obsCheck.checkPointInRadius will throw an error for some reason...
+    ObstacleChecker obsCheck2 = obsCheck;
+
+    // Loop over all agents and check if they collide with obstacles
+    for (int i = 0; i < numAgents; i++)
     {
-        if (point[i] < cspace.lowerBounds()[i] || point[i] > cspace.upperBounds()[i])
+        // Extract agent position
+        Eigen::Vector2d agentPos = metaState.segment(agentSize*i, agentSize);
+
+        // Loop over obstacles and exit if the robot collides
+        for (const auto &obstacle : env.obstacles)
         {
-            return false;
+            // Check if the provided agent state is within its radius to an obstacle
+            if (obsCheck2.checkPointInRadius(agentPos, obstacle, agentProps[i].radius))
+            {
+                return true;
+            }
         }
     }
-    return true;
-
+    return false;
 }
+
+// Checks whether any agents collide with other agents in a centralized planner
+bool MultiAgentCSpace::agentAgentCollision(const Eigen::VectorXd& metaState) const
+{
+    // Choose starting agent
+    for (int i = 0; i < numAgents; ++i)
+    {
+        // Get first agent position
+        Eigen::Vector2d pos_i = metaState.segment(i * agentSize, agentSize);
+
+        // Check all other agents
+        for (int j = i + 1; j < numAgents; ++j)
+        {
+            // Get second position
+            Eigen::Vector2d pos_j = metaState.segment(j * agentSize, agentSize);
+
+            // Calculate distance between agent centers
+            double distance = (pos_i - pos_j).norm();
+            double min_distance = agentProps[i].radius + agentProps[j].radius;
+
+            // If agents are closer than the sum of their radii, they've collided
+            if (distance < min_distance)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Checks whether an agent collides with obstacles in the environment
+bool DecoupledAgentCSpace::agentEnvCollision(const Eigen::VectorXd &q) const
+{
+    // Copy the obstacle checker object, otherwise obsCheck.checkPointInRadius will throw an error for some reason...
+    ObstacleChecker obsCheck2 = obsCheck;
+
+    // Check if current configuration collides with obstacles in xy space
+    Eigen::Vector2d agentPos = q.segment(0, 2);
+    for (const auto &obstacle : env.obstacles)
+    {
+        // Check if the provided agent state is within its radius to an obstacle
+        if (obsCheck2.checkPointInRadius(agentPos, obstacle, agentProps[agentIdx].radius))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Checks whether an agent collides with a previous path at a specific moment in time
+bool DecoupledAgentCSpace::agentAgentCollision(const Eigen::VectorXd &q, int time) const
+{
+    // Loop over existing paths
+    for (int i = 0; i < agentPaths.size(); i++)
+    {
+        // Don't check for collisions with self
+        if (i == agentIdx) continue;
+
+        // Don't check for collisions with unplanned agents
+        //if (agentPaths[i].waypoints.size() <= 1) continue;
+
+        // Pull out path of the other agent at this timestep, or at the end of its path
+        Eigen::VectorXd otherPos;
+        if (time >= agentPaths[i].waypoints.size())
+        {
+            otherPos = agentPaths[i].waypoints.back();
+        }
+        else
+        {
+            otherPos = agentPaths[i].waypoints[time];
+        }
+
+        // Calculate distance between agent centers
+        double dist = (q - otherPos.segment(0,2)).norm();
+        double minDist = agentProps[agentIdx].radius + agentProps[i].radius;
+
+        // If distance between centers is less than the sum of their radii, they've collided
+        if (dist < minDist)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+
 
