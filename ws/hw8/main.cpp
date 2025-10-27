@@ -14,8 +14,8 @@ int main(int argc, char** argv) {
     amp::RNG::seed(amp::RNG::randiUnbounded());
 
     // Control booleans
-    bool runCentral = false;
-    bool benchmarkCentral = false;
+    bool runCentral = true;
+    bool benchmarkCentral = true;
     bool runDecoupled = true;
     bool benchmarkDecouple = true;
 
