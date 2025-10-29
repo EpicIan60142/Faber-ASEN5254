@@ -240,7 +240,7 @@ void MyFirstOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& co
 Eigen::VectorXd MyFirstOrderUnicycle::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
 {
     // Extract dimensions
-    double radius = this->agent_dim.length/2;
+    double radius = this->agent_dim.length/2.0;
 
     // Extract states used in dynamics
     double theta = state[2];
@@ -266,7 +266,7 @@ void MySecondOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& c
 Eigen::VectorXd MySecondOrderUnicycle::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
 {
     // Extract dimensions
-    double radius = this->agent_dim.length/2;
+    double radius = this->agent_dim.length/2.0;
 
     // Extract states used in dynamics
     double theta = state[2];

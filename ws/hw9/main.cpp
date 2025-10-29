@@ -28,6 +28,6 @@ int main(int argc, char** argv) {
         Visualizer::makeFigure(prob, path, true); // Set to 'true' to render animation
     }
     Visualizer::saveFigures(true, "hw9_figs");
-    //HW9::grade<MyKinoRRT, MySingleIntegrator, MyFirstOrderUnicycle, MySecondOrderUnicycle, MySimpleCar>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple());
+    HW9::grade<MyKinoRRT, MySingleIntegrator, MyFirstOrderUnicycle, MySecondOrderUnicycle, MySimpleCar>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple());
     return 0;
 }
