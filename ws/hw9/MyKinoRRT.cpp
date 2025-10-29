@@ -144,8 +144,8 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
             Eigen::VectorXd newState = this->nodes[nearestNodeIdx];
             agent.propagate(newState, bestControl, bestDt);
             this->nodes[nodeIdx] = newState;
-            this->controls[nodeIdx-1] = bestControl;
-            this->durations[nodeIdx-1] = bestDt;
+            this->controls[nodeIdx] = bestControl;
+            this->durations[nodeIdx] = bestDt;
 
                 // Connect with edge lengths of 1 for RRT
             this->graphPtr->connect(nearestNodeIdx, nodeIdx, 1);
