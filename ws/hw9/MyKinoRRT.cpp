@@ -178,13 +178,13 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
     if (trajFound)
     {
         // Add goal state as a node
-        this->nodes[nodeIdx+1] = q_goal_mean;
-        this->controls[nodeIdx+1] = Eigen::VectorXd::Zero(problem.u_bounds.size());
-        this->durations[nodeIdx+1] = 0;
-        this->graphPtr->connect(nodeIdx, nodeIdx+1, 1);
+        //this->nodes[nodeIdx+1] = q_goal_mean;
+        //this->controls[nodeIdx+1] = Eigen::VectorXd::Zero(problem.u_bounds.size());
+        //this->durations[nodeIdx+1] = 0;
+        //this->graphPtr->connect(nodeIdx, nodeIdx+1, 1);
 
         // Run A* on the tree
-        amp::ShortestPathProblem problemRRT(this->graphPtr, 0, nodeIdx+1);
+        amp::ShortestPathProblem problemRRT(this->graphPtr, 0, nodeIdx);
         MyAStarAlgo algo;
         MyAStarAlgo::GraphSearchResult result = algo.search(problemRRT, amp::SearchHeuristic());
 

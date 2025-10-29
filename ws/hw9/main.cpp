@@ -17,15 +17,16 @@ std::unordered_map<AgentType, std::function<std::shared_ptr<amp::DynamicAgent>()
 
 int main(int argc, char** argv) {
     // Select problem, plan, check, and visualize
-    int select = 7;
+    int select = 0;
     KinodynamicProblem2D prob = problems[select];
     MyKinoRRT kino_planner;
     KinoPath path = kino_planner.plan(prob, *agentFactory[prob.agent_type]());
-
     HW9::check(path, prob);
     if (path.valid)
+    {
         Visualizer::makeFigure(prob, path, false); // Set to 'true' to render animation
         Visualizer::makeFigure(prob, path, true); // Set to 'true' to render animation
+    }
     Visualizer::saveFigures(true, "hw9_figs");
     //HW9::grade<MyKinoRRT, MySingleIntegrator, MyFirstOrderUnicycle, MySecondOrderUnicycle, MySimpleCar>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple());
     return 0;

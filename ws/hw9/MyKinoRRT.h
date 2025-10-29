@@ -18,7 +18,7 @@ class MyKinoRRT : public amp::KinodynamicRRT {
 
     private:
         int nSample = 50000; // Number of random node samples to take
-        int uSample = 10; // How many random controls to sample per node
+        int uSample = 1; // How many random controls to sample per node
         double rConnect = 1; // Radius to define connecting valid configurations
         double pGoal = 0.05; // Probability of selecting the goal point as a configuration
         std::shared_ptr<amp::Graph<double>> graphPtr = std::make_shared<amp::Graph<double>>(); // Graph

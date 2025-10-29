@@ -340,6 +340,18 @@ bool KinoDynamicCSpace::obsCollide(const Eigen::VectorXd &state) const
             vertices.push_back(rPos - (0.5*width*rLeft) + (0.5*length*rTheta)); // r4
         }
 
+            // Make sure vertices are in bounds
+        for (int i = 0; i < vertices.size(); i++)
+        {
+            Eigen::Vector2d vertex = vertices[i];
+
+            if (!isWithinBounds(vertex, *this))
+            {
+                collided = true;
+                return collided;
+            }
+        }
+
         // Create rectangle axes vector and run Separating Axes Theorem
             // Test rectangle axes for a separating axis. If we find one, no intersection
         std::vector<Eigen::Vector2d> rectAxes = {rTheta, rLeft};
