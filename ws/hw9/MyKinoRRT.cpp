@@ -125,7 +125,7 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         // Test the subpath for collisions and add it to the graph if collision free
         bool collided = false;
         Eigen::VectorXd testPoint;
-        for (double t = 0; t <= bestDt; t += bestDt/10.0)
+        for (double t = 0; t <= bestDt; t += bestDt/5.0)
         {
             // Incrementally integrate the dynamics and check for collisions
             testPoint = this->nodes[nearestNodeIdx];

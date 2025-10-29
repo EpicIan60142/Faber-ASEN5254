@@ -17,39 +17,16 @@ std::unordered_map<AgentType, std::function<std::shared_ptr<amp::DynamicAgent>()
 
 int main(int argc, char** argv) {
     // Select problem, plan, check, and visualize
-    int select = 2;
+    int select = 7;
     KinodynamicProblem2D prob = problems[select];
     MyKinoRRT kino_planner;
     KinoPath path = kino_planner.plan(prob, *agentFactory[prob.agent_type]());
 
-    /*
-    for (size_t i = 0; i < path.waypoints.size(); i++) {
-        std::cout << "Waypoint " << i << ": ";
-        for (int j = 0; j < path.waypoints[i].size(); j++) {
-            std::cout << path.waypoints[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    for (size_t i = 0; i < path.controls.size(); i++) {
-        std::cout << "Control " << i << ": ";
-        for (int j = 0; j < path.controls[i].size(); j++) {
-            std::cout << path.controls[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    for (size_t i = 0; i < path.controls.size(); i++) {
-        std::cout << "Duration " << i << ": ";
-        std::cout << path.durations[i] << " ";
-        std::cout << std::endl;
-    }
-    */
-
     HW9::check(path, prob);
     if (path.valid)
+        Visualizer::makeFigure(prob, path, false); // Set to 'true' to render animation
         Visualizer::makeFigure(prob, path, true); // Set to 'true' to render animation
     Visualizer::saveFigures(true, "hw9_figs");
-    HW9::grade<MyKinoRRT, MySingleIntegrator, MyFirstOrderUnicycle, MySecondOrderUnicycle, MySimpleCar>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple());
+    //HW9::grade<MyKinoRRT, MySingleIntegrator, MyFirstOrderUnicycle, MySecondOrderUnicycle, MySimpleCar>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple());
     return 0;
 }
