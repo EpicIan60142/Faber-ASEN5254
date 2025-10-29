@@ -126,7 +126,7 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         // Test the subpath for collisions and add it to the graph if collision free
         bool collided = false;
         Eigen::VectorXd testPoint;
-        for (double t = 0; t <= bestDt; t += bestDt/5.0)
+        for (double t = 0; t <= bestDt; t += bestDt/10)
         {
             // Incrementally integrate the dynamics and check for collisions
             testPoint = this->nodes[nearestNodeIdx];
@@ -240,7 +240,7 @@ void MyFirstOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& co
 Eigen::VectorXd MyFirstOrderUnicycle::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
 {
     // Extract dimensions
-    double radius = this->agent_dim.length/2.0;
+    double radius = this->agent_dim.length/2;
 
     // Extract states used in dynamics
     double theta = state[2];
@@ -266,7 +266,7 @@ void MySecondOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& c
 Eigen::VectorXd MySecondOrderUnicycle::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
 {
     // Extract dimensions
-    double radius = this->agent_dim.length/2.0;
+    double radius = this->agent_dim.length/2;
 
     // Extract states used in dynamics
     double theta = state[2];
