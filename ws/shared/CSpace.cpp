@@ -2,6 +2,7 @@
 // Created by ianmf on 9/24/25.
 //
 
+#include "AMPCore.h"
 #include "CSpace.h"
 #include "ObstacleChecker.h"
 
@@ -293,5 +294,27 @@ bool DecoupledAgentCSpace::agentAgentCollision(const Eigen::VectorXd &q, int tim
     return false;
 }
 
+bool KinoDynamicCSpace::obsCollide(const Eigen::VectorXd &state) const
+{
+    // Make a copy of the obstacle checker
+    ObstacleChecker obsCheck2 = this->obsCheck;
 
+    // Check collisions depending on agent type
+    bool collided = false;
+    if (this->problem.agent_type == amp::AgentType::FirstOrderUnicycle || this->problem.agent_type == amp::AgentType::SecondOrderUnicycle)
+    {
+
+    }
+    else if (this->problem.agent_type == amp::AgentType::SimpleCar)
+    {
+
+    }
+    else // Every other case, including Single Integrator
+    {
+        Eigen::Vector2d agentPos = state.segment(0, 2);
+        collided = obsCheck2.evaluatePrimitives(agentPos, false);
+    }
+
+    return collided;
+}
 

@@ -279,4 +279,55 @@ class DecoupledAgentCSpace : public amp::ConfigurationSpace
         }
 };
 
+class KinoDynamicCSpace : public amp::ConfigurationSpace
+{
+    public:
+        // Constructor
+        KinoDynamicCSpace(const amp::KinodynamicProblem2D &prob)
+            : amp::ConfigurationSpace(computeLowerBounds(prob), computeUpperBounds(prob)),
+                problem(prob)
+        {
+            obsCheck.setObstacles(prob.obstacles);
+        }
+
+        // Collision checker
+        bool inCollision(const Eigen::VectorXd& state) const override
+        {
+            return !isWithinBounds(state, *this) || obsCollide(state);
+        }
+
+        // Collision helper functions
+        bool obsCollide(const Eigen::VectorXd &state) const;
+
+    private:
+        // Private members
+        amp::KinodynamicProblem2D problem;
+        ObstacleChecker obsCheck;
+
+        // Private methods
+        static Eigen::VectorXd computeLowerBounds(const amp::KinodynamicProblem2D& prob)
+        {
+            Eigen::VectorXd lowerBounds(prob.q_bounds.size());
+
+            for (int i = 0; i < prob.q_bounds.size(); ++i)
+            {
+                lowerBounds[i] = prob.q_bounds[i].first;
+            }
+
+            return lowerBounds;
+        }
+
+        static Eigen::VectorXd computeUpperBounds(const amp::KinodynamicProblem2D& prob)
+        {
+            Eigen::VectorXd upperBounds(prob.q_bounds.size());
+
+            for (int i = 0; i < prob.q_bounds.size(); ++i)
+            {
+                upperBounds[i] = prob.q_bounds[i].second;
+            }
+
+            return upperBounds;
+        }
+};
+
 #endif //AMP_TOOLS_CSPACE_H
