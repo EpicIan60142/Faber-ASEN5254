@@ -23,6 +23,9 @@ Eigen::VectorXd RK4(AgentType &agent, Eigen::VectorXd& state, const Eigen::Vecto
 // Kinodynamic RRT
 amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::DynamicAgent& agent)
 {
+    // Assign agent dimensions
+    agent.agent_dim = problem.agent_dim;
+
     // Build CSpace
     KinoDynamicCSpace cspace(problem);
 
@@ -85,7 +88,6 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
             // Initialize tracking variables
         minDist = std::numeric_limits<double>::infinity();
         Eigen::VectorXd bestControl;
-        Eigen::VectorXd bestPoint;
         double bestDt;
             // Find control max and min
         Eigen::VectorXd controlMin = Eigen::VectorXd(problem.u_bounds.size());
@@ -101,7 +103,7 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
             // Sample random controls
         for (int j = 0; j < this->uSample; j++)
         {
-                // Generate vector between -1 and 1
+                // Generate vector between 0 and 1
             Eigen::VectorXd randVec = Eigen::VectorXd::Random(problem.u_bounds.size()) * 0.5 + Eigen::VectorXd::Ones(problem.u_bounds.size()) * 0.5;
                 // Apply control range
             Eigen::VectorXd control = controlMin + (controlMax - controlMin).cwiseProduct(randVec);
@@ -117,7 +119,6 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
             if (dist < minDist)
             {
                 bestControl = control;
-                bestPoint = testPoint;
                 bestDt = dt;
             }
         }
@@ -217,21 +218,6 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
     }
 
     return path;
-
-    /*
-    amp::KinoPath path;
-    Eigen::VectorXd state = problem.q_init;
-    path.waypoints.push_back(state);
-    for (int i = 0; i < 10; i++) {
-        Eigen::VectorXd control = Eigen::VectorXd::Random(problem.q_init.size());
-        agent.propagate(state, control, this->dt);
-        path.waypoints.push_back(state);
-        path.controls.push_back(control);
-        path.durations.push_back(this->dt);
-    }
-    path.valid = true;
-    return path;
-    */
 }
 
 // Single Integrator
@@ -253,12 +239,15 @@ void MyFirstOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& co
 
 Eigen::VectorXd MyFirstOrderUnicycle::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
 {
+    // Extract dimensions
+    double radius = this->agent_dim.length/2;
+
     // Extract states used in dynamics
     double theta = state[2];
 
     // Calculate rates of change
-    double xDot = control[0]*this->radius*std::cos(theta);
-    double yDot = control[0]*this->radius*std::sin(theta);
+    double xDot = control[0]*radius*std::cos(theta);
+    double yDot = control[0]*radius*std::sin(theta);
     double thetaDot = control[1];
 
     // Assign output
@@ -276,14 +265,17 @@ void MySecondOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& c
 
 Eigen::VectorXd MySecondOrderUnicycle::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
 {
+    // Extract dimensions
+    double radius = this->agent_dim.length/2;
+
     // Extract states used in dynamics
     double theta = state[2];
     double sigma = state[3];
     double omega = state[4];
 
     // Calculate rates of change
-    double xDot = sigma*this->radius*std::cos(theta);
-    double yDot = sigma*this->radius*std::sin(theta);
+    double xDot = sigma*radius*std::cos(theta);
+    double yDot = sigma*radius*std::sin(theta);
     double thetaDot = omega;
     double sigmaDot = control[0];
     double omegaDot = control[1];
@@ -303,6 +295,10 @@ void MySimpleCar::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, co
 
 Eigen::VectorXd MySimpleCar::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
 {
+    // Extract dimensions used in dynamics
+    double length = this->agent_dim.length;
+    double width = this->agent_dim.width;
+
     // Extract states used in dynamics
     double theta = state[2];
     double v = state[3];
@@ -311,7 +307,7 @@ Eigen::VectorXd MySimpleCar::dynamics(Eigen::VectorXd &state, const Eigen::Vecto
     // Calculate rates of change
     double xDot = v*std::cos(theta);
     double yDot = v*std::sin(theta);
-    double thetaDot = (v/this->length)*std::tan(phi);
+    double thetaDot = (v/length)*std::tan(phi);
     double vDot = control[0];
     double phiDot = control[1];
 

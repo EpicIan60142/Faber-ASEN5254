@@ -37,23 +37,17 @@ class MyFirstOrderUnicycle : public amp::DynamicAgent {
     public:
         virtual void propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, const double dt) override;
         Eigen::VectorXd dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control);
-    private:
-        double radius = 0.25; // Unicycle wheel radius
 };
 
 class MySecondOrderUnicycle : public amp::DynamicAgent {
     public:
         virtual void propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, const double dt) override;
         Eigen::VectorXd dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control);
-    private:
-        double radius = 0.25; // Unicycle wheel radius
 };
 
 class MySimpleCar : public amp::DynamicAgent {
     public:
         virtual void propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, const double dt) override;
         Eigen::VectorXd dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control);
-    private:
-        double length = 5;
-        double width = 2;
+
 };
