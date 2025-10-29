@@ -65,7 +65,7 @@ def animate_point(states):
     ani = animation.FuncAnimation(ax.get_figure(), update, frames=len(states), init_func=init, blit=True, repeat=False)
     ani.save('../../file_dump/video/path_animation.mp4', writer='ffmpeg', fps=len(states)/duration)
     # Uncomment the following line to display the animation
-    # plt.show()
+    plt.show()
 
 def animate_polygon(states, dimensions, isCar):
     ax = plt.gca()
@@ -86,7 +86,7 @@ def animate_polygon(states, dimensions, isCar):
     ani = animation.FuncAnimation(ax.get_figure(), update, frames=len(states), init_func=init, blit=True, repeat=False)    
     ani.save('../../file_dump/video/path_animation.mp4', writer='ffmpeg', fps=len(states)/duration)
     # Uncomment the following line to display the animation
-    # plt.show()
+    plt.show()
 
 
 def get_vertices(state : tuple, dimensions : tuple, isCar : bool):

@@ -128,7 +128,7 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         for (double t = 0; t <= bestDt; t += bestDt/10.0)
         {
             // Incrementally integrate the dynamics and check for collisions
-            testPoint = bestPoint;
+            testPoint = this->nodes[nearestNodeIdx];
             agent.propagate(testPoint, bestControl, t);
             if (!isWithinBounds(testPoint, cspace) || cspace.inCollision(testPoint))
             {
@@ -141,9 +141,11 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         if (!collided)
         {
                 // Add successful test point to nodes map
-            this->nodes[nodeIdx] = testPoint;
-            this->controls[nodeIdx] = bestControl;
-            this->durations[nodeIdx] = bestDt;
+            Eigen::VectorXd newState = this->nodes[nearestNodeIdx];
+            agent.propagate(newState, bestControl, bestDt);
+            this->nodes[nodeIdx] = newState;
+            this->controls[nodeIdx-1] = bestControl;
+            this->durations[nodeIdx-1] = bestDt;
 
                 // Connect with edge lengths of 1 for RRT
             this->graphPtr->connect(nearestNodeIdx, nodeIdx, 1);
