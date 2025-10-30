@@ -26,6 +26,14 @@ int main(int argc, char** argv) {
         HW9::check(path, prob);
         if (path.valid)
         {
+            amp::Path2D path2d;
+            for (int i = 0; i < path.waypoints.size(); i++)
+            {
+                double x = path.waypoints[i][0];
+                double y = path.waypoints[i][1];
+                path2d.waypoints.push_back({x,y});
+            }
+            std::cout << "Path length for problem " << select + 1 << ": " << path2d.length() << std::endl;
             Visualizer::makeFigure(prob, path, false); // Set to 'true' to render animation
             Visualizer::makeFigure(prob, path, true); // Set to 'true' to render animation
         }

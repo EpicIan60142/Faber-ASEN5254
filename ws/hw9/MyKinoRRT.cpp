@@ -71,7 +71,9 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         for (size_t j = 0; j < nodeIdx; j++)
         {
             Eigen::VectorXd nodeState = this->nodes[j];
-            double dist = (randState - nodeState).norm();
+            //double dist = (randState - nodeState).norm();
+                // Perform correct distance calculation based on the problem
+            double dist = this->calculateDistance(randState, nodeState, problem);
             if (dist < minDist)
             {
                 minDist = dist;
@@ -80,9 +82,9 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         }
 
         // Construct a unit vector from the nearest tree node to the random node and construct a path that's rConnect along the unit vector
-        Eigen::VectorXd rB = randState - this->nodes[nearestNodeIdx];
-        Eigen::VectorXd rHatB = rB / rB.norm();
-        Eigen::VectorXd goalPoint = this->nodes[nearestNodeIdx] + this->rConnect * rHatB;
+        //Eigen::VectorXd rB = randState - this->nodes[nearestNodeIdx];
+        //Eigen::VectorXd rHatB = rB / rB.norm();
+        //Eigen::VectorXd goalPoint = this->nodes[nearestNodeIdx] + this->rConnect * rHatB;
 
         // Sample random controls to try and reach the goal point
             // Initialize tracking variables
@@ -115,9 +117,11 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
                 // Start at the nearest node
             Eigen::VectorXd testPoint = this->nodes[nearestNodeIdx];
             agent.propagate(testPoint, control, dt);
-            double dist = (goalPoint - testPoint).norm();
+            //double dist = (goalPoint - testPoint).norm();
+            double dist = this->calculateDistance(randState, testPoint, problem);
             if (dist < minDist)
             {
+                minDist = dist;
                 bestControl = control;
                 bestDt = dt;
             }
@@ -126,10 +130,12 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         // Test the subpath for collisions and add it to the graph if collision free
         bool collided = false;
         Eigen::VectorXd testPoint;
-        for (double t = 0; t <= bestDt; t += bestDt/10)
+        int steps = std::max(5, std::min(20, static_cast<int>(bestDt*50)));
+        for (int step = 0; step <= steps; step++)
         {
             // Incrementally integrate the dynamics and check for collisions
             testPoint = this->nodes[nearestNodeIdx];
+            double t = (static_cast<double>(step) / steps) * bestDt;
             agent.propagate(testPoint, bestControl, t);
             if (!isWithinBounds(testPoint, cspace) || cspace.inCollision(testPoint))
             {
@@ -218,6 +224,66 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
     }
 
     return path;
+}
+
+    // Node distance calculation
+double MyKinoRRT::calculateDistance(const Eigen::VectorXd& state1, const Eigen::VectorXd& state2, const amp::KinodynamicProblem2D& problem)
+{
+    switch (problem.agent_type)
+    {
+        case amp::AgentType::SingleIntegrator:
+            return (state2 - state1).norm();
+
+        case amp::AgentType::FirstOrderUnicycle:
+        {
+            // Position + weighted orientation
+            double pos_dist = (state2.segment(0,2) - state1.segment(0,2)).norm();
+            double theta_diff = std::abs(state2[2] - state1[2]);
+            theta_diff = std::min(theta_diff, 2*M_PI - theta_diff);
+            return pos_dist + 0.5 * theta_diff;
+        }
+
+        case amp::AgentType::SecondOrderUnicycle:
+        {
+            // Position + orientation + velocities
+            double pos_dist = (state2.segment(0,2) - state1.segment(0,2)).norm();
+            double theta_diff = std::abs(state2[2] - state1[2]);
+            theta_diff = std::min(theta_diff, 2*M_PI - theta_diff);
+            double vel_diff = std::abs(state2[3] - state1[3]); // sigma
+            double omega_diff = std::abs(state2[4] - state1[4]); // omega
+            return pos_dist + 0.5 * theta_diff + 0.2 * vel_diff + 0.2 * omega_diff;
+        }
+
+        case amp::AgentType::SimpleCar:
+        {
+            // Extract states
+            Eigen::Vector2d pos1 = state1.segment(0,2);
+            Eigen::Vector2d pos2 = state2.segment(0,2);
+            double theta1 = state1[2];
+            double theta2 = state2[2];
+            double maxSteer = std::max(std::abs(problem.q_bounds[4].first), std::abs(problem.q_bounds[4].second));
+            double turning_radius = problem.agent_dim.length/std::tan(maxSteer);
+
+            // Simplified Dubins distance (approximate)
+            double euclidean_dist = (pos2 - pos1).norm();
+
+            // Angular difference
+            double theta_diff = std::abs(theta2 - theta1);
+            theta_diff = std::min(theta_diff, 2*M_PI - theta_diff);
+            double phi_diff = std::abs(state2[4] - state1[4]);
+
+            // Velocity difference
+            double v_diff = std::abs(state2[3] - state1[3]);
+
+            // Arc length needed for orientation change
+            double arc_length = turning_radius * theta_diff;
+
+            // Combine linear and angular components
+            return std::max(euclidean_dist, arc_length) + 0.1*v_diff + 0.1*phi_diff;
+        }
+        default:
+            return std::numeric_limits<double>::infinity();
+    }
 }
 
 // Single Integrator
