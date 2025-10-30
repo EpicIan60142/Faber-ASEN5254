@@ -17,25 +17,26 @@ std::unordered_map<AgentType, std::function<std::shared_ptr<amp::DynamicAgent>()
 
 int main(int argc, char** argv) {
     // Select problem, plan, check, and visualize
-    for (int select = 0; select < problems.size(); select++)
+    std::vector<int> probIdx = {0, 2, 4, 6, 7};
+    for (int i = 0; i < probIdx.size(); i++)
     {
-        std::cout << "Planning for problem " << select + 1 << std::endl;
-        KinodynamicProblem2D prob = problems[select];
+        std::cout << "Planning for problem " << probIdx[i] << std::endl;
+        KinodynamicProblem2D prob = problems[probIdx[i]];
         MyKinoRRT kino_planner;
         KinoPath path = kino_planner.plan(prob, *agentFactory[prob.agent_type]());
         HW9::check(path, prob);
         if (path.valid)
         {
             amp::Path2D path2d;
-            for (int i = 0; i < path.waypoints.size(); i++)
+            for (int j = 0; j < path.waypoints.size(); j++)
             {
-                double x = path.waypoints[i][0];
-                double y = path.waypoints[i][1];
+                double x = path.waypoints[j][0];
+                double y = path.waypoints[j][1];
                 path2d.waypoints.push_back({x,y});
             }
-            std::cout << "Path length for problem " << select + 1 << ": " << path2d.length() << std::endl;
+            std::cout << "Path length for problem " << probIdx[i] << ": " << path2d.length() << std::endl;
             Visualizer::makeFigure(prob, path, false); // Set to 'true' to render animation
-            Visualizer::makeFigure(prob, path, true); // Set to 'true' to render animation
+            //Visualizer::makeFigure(prob, path, true); // Set to 'true' to render animation
         }
     }
     Visualizer::saveFigures(true, "hw9_figs");

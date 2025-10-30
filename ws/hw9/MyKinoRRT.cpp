@@ -53,9 +53,18 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         double rand = dist_p(gen_p);
         Eigen::VectorXd randState;
 
-        if (rand <= this->pGoal)// Choose goal_state with probability pGoal
+        if (rand <= this->pGoal)// Choose a state within the goal region with probability pGoal
         {
-            randState = q_goal_mean;
+            // Generate vector between 0 and 1
+            Eigen::VectorXd randVec = Eigen::VectorXd::Random(problem.q_goal.size()) * 0.5 + Eigen::VectorXd::Ones(problem.q_goal.size()) * 0.5;
+
+            // Sample uniformly within the goal bounds
+            randState = Eigen::VectorXd(problem.q_goal.size());
+            for (int j = 0; j < problem.q_goal.size(); j++)
+            {
+                double range = problem.q_goal[j].second - problem.q_goal[j].first;
+                randState[j] = problem.q_goal[j].first + range * randVec[j];
+            }
         }
         else // Choose a random configuration with probability 1-pGoal
         {
@@ -112,12 +121,21 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
                 // Generate a random time duration between the provided range
             static std::random_device rd_dt;
             static std::mt19937 gen_dt(rd_dt());
-            std::uniform_real_distribution<double> dist_dt(problem.dt_bounds.first, problem.dt_bounds.second);
-            double dt = dist_dt(gen_dt);
+            double dt;
+            if (problem.agent_type == amp::AgentType::SimpleCar)
+            {
+                std::uniform_real_distribution<double> dist_dt(problem.dt_bounds.first, 0.25);
+                dt = dist_dt(gen_dt);
+            }
+            else
+            {
+                std::uniform_real_distribution<double> dist_dt(problem.dt_bounds.first, problem.dt_bounds.second);
+                dt = dist_dt(gen_dt);
+            }
                 // Start at the nearest node
             Eigen::VectorXd testPoint = this->nodes[nearestNodeIdx];
             agent.propagate(testPoint, control, dt);
-            //double dist = (goalPoint - testPoint).norm();
+            //double dist = (randState.segment(0,2) - testPoint.segment(0,2)).norm();
             double dist = this->calculateDistance(randState, testPoint, problem);
             if (dist < minDist)
             {
@@ -164,6 +182,26 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
                 Eigen::VectorXd currentQ = this->nodes[nodeIdx];
                 if (currentQ[j] < problem.q_goal[j].first || currentQ[j] > problem.q_goal[j].second)
                 {
+                    if (i > 20000 && problem.agent_type == amp::AgentType::SimpleCar) // Terminate early for parallel parking
+                    {
+                        // Find the node that got the closest to the goal
+                        double minDist = std::numeric_limits<double>::infinity();
+                        size_t nearestNodeIdx = 0;
+                        for (size_t j = 0; j < nodeIdx; j++)
+                        {
+                            Eigen::VectorXd nodeState = this->nodes[j];
+                            //double dist = (randState - nodeState).norm();
+                            // Perform correct distance calculation based on the problem
+                            double dist = this->calculateDistance(nodeState, q_goal_mean, problem);
+                            if (dist < minDist)
+                            {
+                                minDist = dist;
+                                nearestNodeIdx = j;
+                            }
+                        }
+                        nodeIdx = nearestNodeIdx;
+                        break;
+                    }
                     trajFound = false;
                     break;
                 }
@@ -251,7 +289,7 @@ double MyKinoRRT::calculateDistance(const Eigen::VectorXd& state1, const Eigen::
             theta_diff = std::min(theta_diff, 2*M_PI - theta_diff);
             double vel_diff = std::abs(state2[3] - state1[3]); // sigma
             double omega_diff = std::abs(state2[4] - state1[4]); // omega
-            return pos_dist + 0.5 * theta_diff + 0.2 * vel_diff + 0.2 * omega_diff;
+            return pos_dist + 0.5 * theta_diff + 0.3 * vel_diff + 0.3 * omega_diff;
         }
 
         case amp::AgentType::SimpleCar:
@@ -261,11 +299,13 @@ double MyKinoRRT::calculateDistance(const Eigen::VectorXd& state1, const Eigen::
             Eigen::Vector2d pos2 = state2.segment(0,2);
             double theta1 = state1[2];
             double theta2 = state2[2];
+            /*
             double maxSteer = std::max(std::abs(problem.q_bounds[4].first), std::abs(problem.q_bounds[4].second));
             double turning_radius = problem.agent_dim.length/std::tan(maxSteer);
+            */
 
             // Simplified Dubins distance (approximate)
-            double euclidean_dist = (pos2 - pos1).norm();
+            double pos_dist = (pos2 - pos1).norm();
 
             // Angular difference
             double theta_diff = std::abs(theta2 - theta1);
@@ -276,10 +316,11 @@ double MyKinoRRT::calculateDistance(const Eigen::VectorXd& state1, const Eigen::
             double v_diff = std::abs(state2[3] - state1[3]);
 
             // Arc length needed for orientation change
-            double arc_length = turning_radius * theta_diff;
+            //double arc_length = turning_radius * theta_diff;
 
             // Combine linear and angular components
-            return std::max(euclidean_dist, arc_length) + 0.1*v_diff + 0.1*phi_diff;
+            return pos_dist + theta_diff + 0.2 * v_diff + 0.6 * phi_diff;
+            //return std::max(euclidean_dist, arc_length) + 0.1*v_diff + 0.1*phi_diff;
         }
         default:
             return std::numeric_limits<double>::infinity();
