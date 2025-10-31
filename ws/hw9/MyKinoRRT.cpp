@@ -90,11 +90,6 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
             }
         }
 
-        // Construct a unit vector from the nearest tree node to the random node and construct a path that's rConnect along the unit vector
-        //Eigen::VectorXd rB = randState - this->nodes[nearestNodeIdx];
-        //Eigen::VectorXd rHatB = rB / rB.norm();
-        //Eigen::VectorXd goalPoint = this->nodes[nearestNodeIdx] + this->rConnect * rHatB;
-
         // Sample random controls to try and reach the goal point
             // Initialize tracking variables
         minDist = std::numeric_limits<double>::infinity();
@@ -124,7 +119,7 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
             double dt;
             if (problem.agent_type == amp::AgentType::SimpleCar)
             {
-                std::uniform_real_distribution<double> dist_dt(problem.dt_bounds.first, 0.25);
+                std::uniform_real_distribution<double> dist_dt(problem.dt_bounds.first, problem.dt_bounds.second);
                 dt = dist_dt(gen_dt);
             }
             else
@@ -182,26 +177,6 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
                 Eigen::VectorXd currentQ = this->nodes[nodeIdx];
                 if (currentQ[j] < problem.q_goal[j].first || currentQ[j] > problem.q_goal[j].second)
                 {
-                    if (i > 20000 && problem.agent_type == amp::AgentType::SimpleCar) // Terminate early for parallel parking
-                    {
-                        // Find the node that got the closest to the goal
-                        double minDist = std::numeric_limits<double>::infinity();
-                        size_t nearestNodeIdx = 0;
-                        for (size_t j = 0; j < nodeIdx; j++)
-                        {
-                            Eigen::VectorXd nodeState = this->nodes[j];
-                            //double dist = (randState - nodeState).norm();
-                            // Perform correct distance calculation based on the problem
-                            double dist = this->calculateDistance(nodeState, q_goal_mean, problem);
-                            if (dist < minDist)
-                            {
-                                minDist = dist;
-                                nearestNodeIdx = j;
-                            }
-                        }
-                        nodeIdx = nearestNodeIdx;
-                        break;
-                    }
                     trajFound = false;
                     break;
                 }
@@ -222,12 +197,6 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
     amp::KinoPath path;
     if (trajFound)
     {
-        // Add goal state as a node
-        //this->nodes[nodeIdx+1] = q_goal_mean;
-        //this->controls[nodeIdx+1] = Eigen::VectorXd::Zero(problem.u_bounds.size());
-        //this->durations[nodeIdx+1] = 0;
-        //this->graphPtr->connect(nodeIdx, nodeIdx+1, 1);
-
         // Run A* on the tree
         amp::ShortestPathProblem problemRRT(this->graphPtr, 0, nodeIdx);
         MyAStarAlgo algo;
@@ -255,10 +224,66 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
     }
     else
     {
-        path.waypoints.push_back(problem.q_init);
-        path.controls.push_back(Eigen::VectorXd::Zero(problem.u_bounds.size()));
-        path.durations.push_back(0);
-        path.valid = false;
+        std::cout << "No path found, finding closest path to goal" << std::endl;
+
+        // Find the node that got the closest to the goal
+        double minDist = std::numeric_limits<double>::infinity();
+        size_t nearestNodeIdx = 0;
+        for (size_t j = 0; j < nodeIdx; j++)
+        {
+            // Pull out node to test
+            Eigen::VectorXd nodeState = this->nodes[j];
+
+            // Sample 50 points within the goal bounds to calculate distance to
+            for (int k = 0; k < 50; k++)
+            {
+                // Generate vector between 0 and 1
+                Eigen::VectorXd randVec = Eigen::VectorXd::Random(problem.q_goal.size()) * 0.5 + Eigen::VectorXd::Ones(problem.q_goal.size()) * 0.5;
+
+                // Sample uniformly within the goal bounds
+                Eigen::VectorXd randState = Eigen::VectorXd(problem.q_goal.size());
+                for (int idx = 0; idx < problem.q_goal.size(); idx++)
+                {
+                    double range = problem.q_goal[idx].second - problem.q_goal[idx].first;
+                    randState[idx] = problem.q_goal[idx].first + range * randVec[idx];
+                }
+
+                // Calculate distance depending on the type of problem
+                double dist = this->calculateDistance(nodeState, randState, problem);
+
+                // Update minimum distance and closest node
+                if (dist < minDist)
+                {
+                    minDist = dist;
+                    nearestNodeIdx = j;
+                }
+            }
+        }
+        nodeIdx = nearestNodeIdx;
+
+        // Run A* on the tree
+        amp::ShortestPathProblem problemRRT(this->graphPtr, 0, nodeIdx);
+        MyAStarAlgo algo;
+        MyAStarAlgo::GraphSearchResult result = algo.search(problemRRT, amp::SearchHeuristic());
+
+        if (result.success)
+        {
+            // Add nodes in sequence
+            for (const auto &node : result.node_path)
+            {
+                path.waypoints.push_back(nodes[node]);
+                path.controls.push_back(controls[node]);
+                path.durations.push_back(durations[node]);
+            }
+            path.valid = false; // Path doesn't get to the final state, otherwise we aren't here
+        }
+        else
+        {
+            path.waypoints.push_back(problem.q_init);
+            path.controls.push_back(Eigen::VectorXd::Zero(problem.u_bounds.size()));
+            path.durations.push_back(0);
+            path.valid = false;
+        }
     }
 
     return path;
@@ -299,12 +324,10 @@ double MyKinoRRT::calculateDistance(const Eigen::VectorXd& state1, const Eigen::
             Eigen::Vector2d pos2 = state2.segment(0,2);
             double theta1 = state1[2];
             double theta2 = state2[2];
-            /*
             double maxSteer = std::max(std::abs(problem.q_bounds[4].first), std::abs(problem.q_bounds[4].second));
             double turning_radius = problem.agent_dim.length/std::tan(maxSteer);
-            */
 
-            // Simplified Dubins distance (approximate)
+            // Euclidean distance
             double pos_dist = (pos2 - pos1).norm();
 
             // Angular difference
@@ -316,11 +339,10 @@ double MyKinoRRT::calculateDistance(const Eigen::VectorXd& state1, const Eigen::
             double v_diff = std::abs(state2[3] - state1[3]);
 
             // Arc length needed for orientation change
-            //double arc_length = turning_radius * theta_diff;
+            double arc_length = turning_radius * theta_diff;
 
             // Combine linear and angular components
-            return pos_dist + theta_diff + 0.2 * v_diff + 0.6 * phi_diff;
-            //return std::max(euclidean_dist, arc_length) + 0.1*v_diff + 0.1*phi_diff;
+            return std::max(pos_dist, 1.1*arc_length) + 0.5*v_diff + 0.3*phi_diff;
         }
         default:
             return std::numeric_limits<double>::infinity();
@@ -404,7 +426,6 @@ Eigen::VectorXd MySimpleCar::dynamics(Eigen::VectorXd &state, const Eigen::Vecto
 {
     // Extract dimensions used in dynamics
     double length = this->agent_dim.length;
-    double width = this->agent_dim.width;
 
     // Extract states used in dynamics
     double theta = state[2];

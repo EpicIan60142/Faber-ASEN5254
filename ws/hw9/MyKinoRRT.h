@@ -12,6 +12,8 @@ class MyKinoRRT : public amp::KinodynamicRRT {
     public:
         // Constructor
         MyKinoRRT() {};
+        MyKinoRRT(const int nSample, const int uSample, const double pGoal)
+            : nSample(nSample), uSample(uSample), pGoal(pGoal) {};
 
         // Planning method
         virtual amp::KinoPath plan(const amp::KinodynamicProblem2D& problem, amp::DynamicAgent& agent) override;
@@ -19,11 +21,18 @@ class MyKinoRRT : public amp::KinodynamicRRT {
         // Node distance method
         double calculateDistance(const Eigen::VectorXd &state1, const Eigen::VectorXd &state2, const amp::KinodynamicProblem2D &problem);
 
+        // Setter
+        void setParameters(const int newNSample, const int newUSample, const double newPGoal)
+        {
+            if (newNSample > 0) nSample = newNSample;
+            if (newUSample > 0) uSample = newUSample;
+            if (newPGoal > 0 && newPGoal < 1) pGoal = newPGoal;
+        }
+
     private:
-        int nSample = 100000; // Number of random node samples to take
-        int uSample = 50; // How many random controls to sample per node
-        double rConnect = 0.5; // Radius to define connecting valid configurations
-        double pGoal = 0.15; // Probability of selecting the goal point as a configuration
+        int nSample = 50000; // Number of random node samples to take
+        int uSample = 15; // How many random controls to sample per node
+        double pGoal = 0.05; // Probability of selecting the goal point as a configuration
         std::shared_ptr<amp::Graph<double>> graphPtr = std::make_shared<amp::Graph<double>>(); // Graph
         std::map<amp::Node, Eigen::VectorXd> nodes; // Configuration nodes
         std::map<amp::Node, Eigen::VectorXd> controls; // Control nodes
