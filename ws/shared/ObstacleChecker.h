@@ -9,6 +9,9 @@
 #include "Collision.h"
 #include "mLineIntersection.h"
 
+// Function for SAT projection overlap testing
+bool projectionsOverlap(const std::vector<Eigen::Vector2d>& shape1, const std::vector<Eigen::Vector2d>& shape2, const Eigen::Vector2d& axis);
+
 // @brief Obstacle checker class for checking whether points collide with a set of obstacles
 class ObstacleChecker
 {
@@ -29,6 +32,9 @@ class ObstacleChecker
 
             // Calculates the closest distance to a specified obstacle and the gradient from the closest point to the provided point
         std::pair<double, Eigen::Vector2d> calcClosestDistance(const Eigen::Vector2d &point, int obsIdx) const;
+
+            // Runs the separating axis theorem on a rectangle and convex polygon
+        bool checkSeparatingAxisTheorem(const std::vector<Eigen::Vector2d> &rectVertices, std::vector<Eigen::Vector2d> &polyVertices, const std::vector<Eigen::Vector2d> &rectAxes);
 
             // Calculates the centroid of an obstacle
         Eigen::Vector2d calcCentroid(const amp::Obstacle2D &obstacle, bool leftTurner);

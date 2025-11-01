@@ -2,6 +2,7 @@
 // Created by ianmf on 9/24/25.
 //
 
+#include "AMPCore.h"
 #include "CSpace.h"
 #include "ObstacleChecker.h"
 
@@ -293,5 +294,77 @@ bool DecoupledAgentCSpace::agentAgentCollision(const Eigen::VectorXd &q, int tim
     return false;
 }
 
+bool KinoDynamicCSpace::obsCollide(const Eigen::VectorXd &state) const
+{
+    // Make a copy of the obstacle checker
+    ObstacleChecker obsCheck2 = this->obsCheck;
 
+    // Check collisions depending on agent type
+    bool collided = false;
+    if (this->problem.agent_type == amp::AgentType::SingleIntegrator) // No dimensions specified, just check point position
+    {
+        Eigen::Vector2d agentPos = state.segment(0, 2);
+        collided = obsCheck2.evaluatePrimitives(agentPos, false);
+    }
+    else // Every other case, dimensions are given
+    {
+        // Pull out theta and robot position
+        double theta = state[2];
+        Eigen::Vector2d rPos = state.segment(0, 2);
+
+        // Define unit vector in the theta direction
+        Eigen::Vector2d rTheta = Eigen::Vector2d(cos(theta), sin(theta));
+
+        // Define perpendicular unit vector to the left of the unicycle
+        Eigen::Vector2d rLeft = Eigen::Vector2d(-rTheta.y(), rTheta.x());
+
+        // Pull out length and width
+        double length = this->problem.agent_dim.length;
+        double width = this->problem.agent_dim.width;
+
+        // Depending on if this is a unicycle or a car, populate the rectangle vertices for collision checking
+        std::vector<Eigen::Vector2d> vertices;
+        if (this->problem.agent_type == amp::AgentType::SimpleCar)
+        {
+            vertices.push_back(rPos + (0.5*width*rLeft) + (length*rTheta)); // r1
+            vertices.push_back(rPos + (0.5*width*rLeft)); // r2
+            vertices.push_back(rPos - (0.5*width*rLeft)); // r3
+            vertices.push_back(rPos - (0.5*width*rLeft) + (length*rTheta)); // r4
+        }
+        else // One of the unicycles
+        {
+                // Populate vertices in CCW order
+            vertices.push_back(rPos + (0.5*width*rLeft) + (0.5*length*rTheta)); // r1
+            vertices.push_back(rPos + (0.5*width*rLeft) - (0.5*length*rTheta)); // r2
+            vertices.push_back(rPos - (0.5*width*rLeft) - (0.5*length*rTheta)); // r3
+            vertices.push_back(rPos - (0.5*width*rLeft) + (0.5*length*rTheta)); // r4
+        }
+
+            // Make sure vertices are in bounds
+        for (int i = 0; i < vertices.size(); i++)
+        {
+            Eigen::Vector2d vertex = vertices[i];
+
+            if (!isWithinBounds(vertex, *this))
+            {
+                collided = true;
+                return collided;
+            }
+        }
+
+        // Create rectangle axes vector and run Separating Axes Theorem
+            // Test rectangle axes for a separating axis. If we find one, no intersection
+        std::vector<Eigen::Vector2d> rectAxes = {rTheta, rLeft};
+        for (int i = 0; i < problem.obstacles.size(); i++)
+        {
+            if (obsCheck2.checkSeparatingAxisTheorem(vertices, obsCheck2.getObstacles()[i].verticesCCW(), rectAxes))
+            {
+                collided = true;
+                break;
+            }
+        }
+    }
+
+    return collided;
+}
 

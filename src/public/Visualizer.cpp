@@ -57,8 +57,18 @@ std::unique_ptr<ampprivate::pybridge::PythonObject> listOfPointsToPythonObject(c
     ampprivate::pybridge::ListOfTriples<double> list_of_doubles;
     list_of_doubles.list_of_tuples.reserve(list_of_points.size());
     for (const auto& pt : list_of_points) {
-        std::array<double, 3> point = {pt[0], pt[1], pt[2]};
-        list_of_doubles.list_of_tuples.push_back({point});
+
+        if (pt.size() < 3)
+        {
+            std::array<double, 3> point = {pt[0], pt[1]};
+            list_of_doubles.list_of_tuples.push_back({point});
+        }
+        else
+        {
+            std::array<double, 3> point = {pt[0], pt[1], pt[2]};
+            list_of_doubles.list_of_tuples.push_back({point});
+        }
+
     }
     return list_of_doubles.toPyList();
 }

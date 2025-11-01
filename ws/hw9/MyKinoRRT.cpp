@@ -1,20 +1,447 @@
 #include "MyKinoRRT.h"
 
-void MySingleIntegrator::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, double dt) {
-    state += dt * control;
+#include "CSpace.h"
+#include "MyAStar.h"
+
+// Runge-Kutta 4th order integrator template
+template<typename AgentType>
+Eigen::VectorXd RK4(AgentType &agent, Eigen::VectorXd& state, const Eigen::VectorXd& control, const double dt)
+{
+    // Intermediate states
+    Eigen::VectorXd w1 = agent.dynamics(state, control);
+    Eigen::VectorXd tempState = state + (0.5 * dt * w1);
+    Eigen::VectorXd w2 = agent.dynamics(tempState, control);
+    tempState = state + (0.5 * dt * w2);
+    Eigen::VectorXd w3 = agent.dynamics(tempState, control);
+    tempState = state + (dt * w3);
+    Eigen::VectorXd w4 = agent.dynamics(tempState, control);
+
+    // Propagate
+    return state + ((dt/6.0) * (w1 + 2*w2 + 2*w3 + w4));
+}
+
+// Kinodynamic RRT
+amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::DynamicAgent& agent)
+{
+    // Assign agent dimensions
+    agent.agent_dim = problem.agent_dim;
+
+    // Build CSpace
+    KinoDynamicCSpace cspace(problem);
+
+    // Add initial configurations as the root of the tree graph and initialize the node index
+    this->nodes[0] = problem.q_init;
+    this->controls[0] = Eigen::VectorXd::Zero(problem.u_bounds.size());
+    this->durations[0] = 0;
+    size_t nodeIdx = 1;
+
+    // Find mean of goal bounds and set as the target goal
+    Eigen::VectorXd q_goal_mean = Eigen::VectorXd(problem.q_goal.size());
+    for (int i = 0; i < problem.q_goal.size(); i++)
+    {
+        q_goal_mean[i] = 0.5*(problem.q_goal[i].first + problem.q_goal[i].second);
+    }
+
+    // Take samples until we find a valid trajectory or hit the max number of samples
+    bool trajFound = false;
+    for (int i = 0; i < this->nSample; i++)
+    {
+        // Set up random number generation to determine whether sample is goal_state or random
+        static std::random_device rd_p;
+        static std::mt19937 gen_p(rd_p());
+        static std::uniform_real_distribution<double> dist_p(0, 1);
+        double rand = dist_p(gen_p);
+        Eigen::VectorXd randState;
+
+        if (rand <= this->pGoal)// Choose a state within the goal region with probability pGoal
+        {
+            // Generate vector between 0 and 1
+            Eigen::VectorXd randVec = Eigen::VectorXd::Random(problem.q_goal.size()) * 0.5 + Eigen::VectorXd::Ones(problem.q_goal.size()) * 0.5;
+
+            // Sample uniformly within the goal bounds
+            randState = Eigen::VectorXd(problem.q_goal.size());
+            for (int j = 0; j < problem.q_goal.size(); j++)
+            {
+                double range = problem.q_goal[j].second - problem.q_goal[j].first;
+                randState[j] = problem.q_goal[j].first + range * randVec[j];
+            }
+        }
+        else // Choose a random configuration with probability 1-pGoal
+        {
+            // Generate vector with values between 0 and 1, as ::Random() generates numbers between -1 and 1
+            Eigen::VectorXd randVec = Eigen::VectorXd::Random(problem.q_init.size()) * 0.5 + Eigen::VectorXd::Ones(problem.q_init.size()) * 0.5;
+            // Apply CSpace range
+            randState = cspace.lowerBounds() + (cspace.upperBounds() - cspace.lowerBounds()).cwiseProduct(randVec);
+        }
+
+        // Find nearest configuration to the sample point
+        double minDist = std::numeric_limits<double>::infinity();
+        size_t nearestNodeIdx = 0;
+        for (size_t j = 0; j < nodeIdx; j++)
+        {
+            Eigen::VectorXd nodeState = this->nodes[j];
+            //double dist = (randState - nodeState).norm();
+                // Perform correct distance calculation based on the problem
+            double dist = this->calculateDistance(randState, nodeState, problem);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                nearestNodeIdx = j;
+            }
+        }
+
+        // Sample random controls to try and reach the goal point
+            // Initialize tracking variables
+        minDist = std::numeric_limits<double>::infinity();
+        Eigen::VectorXd bestControl;
+        double bestDt;
+            // Find control max and min
+        Eigen::VectorXd controlMin = Eigen::VectorXd(problem.u_bounds.size());
+        for (int k = 0; k < problem.u_bounds.size(); k++)
+        {
+            controlMin[k] = problem.u_bounds[k].first;
+        }
+        Eigen::VectorXd controlMax = Eigen::VectorXd(problem.u_bounds.size());
+        for (int k = 0; k < problem.u_bounds.size(); k++)
+        {
+            controlMax[k] = problem.u_bounds[k].second;
+        }
+            // Sample random controls
+        for (int j = 0; j < this->uSample; j++)
+        {
+                // Generate vector between 0 and 1
+            Eigen::VectorXd randVec = Eigen::VectorXd::Random(problem.u_bounds.size()) * 0.5 + Eigen::VectorXd::Ones(problem.u_bounds.size()) * 0.5;
+                // Apply control range
+            Eigen::VectorXd control = controlMin + (controlMax - controlMin).cwiseProduct(randVec);
+                // Generate a random time duration between the provided range
+            static std::random_device rd_dt;
+            static std::mt19937 gen_dt(rd_dt());
+            double dt;
+            if (problem.agent_type == amp::AgentType::SimpleCar)
+            {
+                std::uniform_real_distribution<double> dist_dt(problem.dt_bounds.first, problem.dt_bounds.second);
+                dt = dist_dt(gen_dt);
+            }
+            else
+            {
+                std::uniform_real_distribution<double> dist_dt(problem.dt_bounds.first, problem.dt_bounds.second);
+                dt = dist_dt(gen_dt);
+            }
+                // Start at the nearest node
+            Eigen::VectorXd testPoint = this->nodes[nearestNodeIdx];
+            agent.propagate(testPoint, control, dt);
+            //double dist = (randState.segment(0,2) - testPoint.segment(0,2)).norm();
+            double dist = this->calculateDistance(randState, testPoint, problem);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                bestControl = control;
+                bestDt = dt;
+            }
+        }
+
+        // Test the subpath for collisions and add it to the graph if collision free
+        bool collided = false;
+        Eigen::VectorXd testPoint;
+        int steps = std::max(5, std::min(20, static_cast<int>(bestDt*50)));
+        for (int step = 0; step <= steps; step++)
+        {
+            // Incrementally integrate the dynamics and check for collisions
+            testPoint = this->nodes[nearestNodeIdx];
+            double t = (static_cast<double>(step) / steps) * bestDt;
+            agent.propagate(testPoint, bestControl, t);
+            if (!isWithinBounds(testPoint, cspace) || cspace.inCollision(testPoint))
+            {
+                collided = true;
+                break;
+            }
+        }
+
+        // Connect nodes if they didn't collide and add to the node map
+        if (!collided)
+        {
+                // Add successful test point to nodes map
+            Eigen::VectorXd newState = this->nodes[nearestNodeIdx];
+            agent.propagate(newState, bestControl, bestDt);
+            this->nodes[nodeIdx] = newState;
+            this->controls[nodeIdx] = bestControl;
+            this->durations[nodeIdx] = bestDt;
+
+                // Connect with edge lengths of 1 for RRT
+            this->graphPtr->connect(nearestNodeIdx, nodeIdx, 1);
+
+            // Check for path solution
+            trajFound = true;
+            for (int j = 0; j < problem.q_goal.size(); j++)
+            {
+                Eigen::VectorXd currentQ = this->nodes[nodeIdx];
+                if (currentQ[j] < problem.q_goal[j].first || currentQ[j] > problem.q_goal[j].second)
+                {
+                    trajFound = false;
+                    break;
+                }
+            }
+
+            // If trajectory was found, exit the sampling loop
+            if (trajFound)
+            {
+                break;
+            }
+
+            // Increment node index
+            nodeIdx++;
+        }
+    }
+
+    // Add goal state to graph and graph search for the solution
+    amp::KinoPath path;
+    if (trajFound)
+    {
+        // Run A* on the tree
+        amp::ShortestPathProblem problemRRT(this->graphPtr, 0, nodeIdx);
+        MyAStarAlgo algo;
+        MyAStarAlgo::GraphSearchResult result = algo.search(problemRRT, amp::SearchHeuristic());
+
+        if (result.success)
+        {
+            // Add nodes in sequence
+            for (const auto &node : result.node_path)
+            {
+                path.waypoints.push_back(nodes[node]);
+                path.controls.push_back(controls[node]);
+                path.durations.push_back(durations[node]);
+            }
+            path.valid = true;
+        }
+        else
+        {
+            path.waypoints.push_back(problem.q_init);
+            path.controls.push_back(Eigen::VectorXd::Zero(problem.u_bounds.size()));
+            path.durations.push_back(0);
+            path.valid = false;
+        }
+
+    }
+    else
+    {
+        std::cout << "No path found, finding closest path to goal" << std::endl;
+
+        // Find the node that got the closest to the goal
+        double minDist = std::numeric_limits<double>::infinity();
+        size_t nearestNodeIdx = 0;
+        for (size_t j = 0; j < nodeIdx; j++)
+        {
+            // Pull out node to test
+            Eigen::VectorXd nodeState = this->nodes[j];
+
+            // Sample 50 points within the goal bounds to calculate distance to
+            for (int k = 0; k < 50; k++)
+            {
+                // Generate vector between 0 and 1
+                Eigen::VectorXd randVec = Eigen::VectorXd::Random(problem.q_goal.size()) * 0.5 + Eigen::VectorXd::Ones(problem.q_goal.size()) * 0.5;
+
+                // Sample uniformly within the goal bounds
+                Eigen::VectorXd randState = Eigen::VectorXd(problem.q_goal.size());
+                for (int idx = 0; idx < problem.q_goal.size(); idx++)
+                {
+                    double range = problem.q_goal[idx].second - problem.q_goal[idx].first;
+                    randState[idx] = problem.q_goal[idx].first + range * randVec[idx];
+                }
+
+                // Calculate distance depending on the type of problem
+                double dist = this->calculateDistance(nodeState, randState, problem);
+
+                // Update minimum distance and closest node
+                if (dist < minDist)
+                {
+                    minDist = dist;
+                    nearestNodeIdx = j;
+                }
+            }
+        }
+        nodeIdx = nearestNodeIdx;
+
+        // Run A* on the tree
+        amp::ShortestPathProblem problemRRT(this->graphPtr, 0, nodeIdx);
+        MyAStarAlgo algo;
+        MyAStarAlgo::GraphSearchResult result = algo.search(problemRRT, amp::SearchHeuristic());
+
+        if (result.success)
+        {
+            // Add nodes in sequence
+            for (const auto &node : result.node_path)
+            {
+                path.waypoints.push_back(nodes[node]);
+                path.controls.push_back(controls[node]);
+                path.durations.push_back(durations[node]);
+            }
+            path.valid = false; // Path doesn't get to the final state, otherwise we aren't here
+        }
+        else
+        {
+            path.waypoints.push_back(problem.q_init);
+            path.controls.push_back(Eigen::VectorXd::Zero(problem.u_bounds.size()));
+            path.durations.push_back(0);
+            path.valid = false;
+        }
+    }
+
+    return path;
+}
+
+    // Node distance calculation
+double MyKinoRRT::calculateDistance(const Eigen::VectorXd& state1, const Eigen::VectorXd& state2, const amp::KinodynamicProblem2D& problem)
+{
+    switch (problem.agent_type)
+    {
+        case amp::AgentType::SingleIntegrator:
+            return (state2 - state1).norm();
+
+        case amp::AgentType::FirstOrderUnicycle:
+        {
+            // Position + weighted orientation
+            double pos_dist = (state2.segment(0,2) - state1.segment(0,2)).norm();
+            double theta_diff = std::abs(state2[2] - state1[2]);
+            theta_diff = std::min(theta_diff, 2*M_PI - theta_diff);
+            return pos_dist + 0.5 * theta_diff;
+        }
+
+        case amp::AgentType::SecondOrderUnicycle:
+        {
+            // Position + orientation + velocities
+            double pos_dist = (state2.segment(0,2) - state1.segment(0,2)).norm();
+            double theta_diff = std::abs(state2[2] - state1[2]);
+            theta_diff = std::min(theta_diff, 2*M_PI - theta_diff);
+            double vel_diff = std::abs(state2[3] - state1[3]); // sigma
+            double omega_diff = std::abs(state2[4] - state1[4]); // omega
+            return pos_dist + 0.5 * theta_diff + 0.3 * vel_diff + 0.3 * omega_diff;
+        }
+
+        case amp::AgentType::SimpleCar:
+        {
+            // Extract states
+            Eigen::Vector2d pos1 = state1.segment(0,2);
+            Eigen::Vector2d pos2 = state2.segment(0,2);
+            double theta1 = state1[2];
+            double theta2 = state2[2];
+            double maxSteer = std::max(std::abs(problem.q_bounds[4].first), std::abs(problem.q_bounds[4].second));
+            double turning_radius = problem.agent_dim.length/std::tan(maxSteer);
+
+            // Euclidean distance
+            double pos_dist = (pos2 - pos1).norm();
+
+            // Angular difference
+            double theta_diff = std::abs(theta2 - theta1);
+            theta_diff = std::min(theta_diff, 2*M_PI - theta_diff);
+            double phi_diff = std::abs(state2[4] - state1[4]);
+
+            // Velocity difference
+            double v_diff = std::abs(state2[3] - state1[3]);
+
+            // Arc length needed for orientation change
+            double arc_length = turning_radius * theta_diff;
+
+            // Combine linear and angular components
+            return std::max(pos_dist, 1.1*arc_length) + 0.5*v_diff + 0.3*phi_diff;
+        }
+        default:
+            return std::numeric_limits<double>::infinity();
+    }
+}
+
+// Single Integrator
+void MySingleIntegrator::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, const double dt)
+{
+    state = RK4(*this, state, control, dt);
 };
 
-amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::DynamicAgent& agent) {
-    amp::KinoPath path;
-    Eigen::VectorXd state = problem.q_init;
-    path.waypoints.push_back(state);
-    for (int i = 0; i < 10; i++) {
-        Eigen::VectorXd control = Eigen::VectorXd::Random(problem.q_init.size());
-        agent.propagate(state, control, 1.0);
-        path.waypoints.push_back(state);
-        path.controls.push_back(control);
-        path.durations.push_back(1.0);
-    }
-    path.valid = true;
-    return path;
+Eigen::VectorXd MySingleIntegrator::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
+{
+    return control;
+}
+
+// First order unicycle
+void MyFirstOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, const double dt)
+{
+    state = RK4(*this, state, control, dt);
+}
+
+Eigen::VectorXd MyFirstOrderUnicycle::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
+{
+    // Extract dimensions
+    double radius = this->agent_dim.length/2;
+
+    // Extract states used in dynamics
+    double theta = state[2];
+
+    // Calculate rates of change
+    double xDot = control[0]*radius*std::cos(theta);
+    double yDot = control[0]*radius*std::sin(theta);
+    double thetaDot = control[1];
+
+    // Assign output
+    Eigen::VectorXd dX = Eigen::VectorXd(state.size());
+    dX << xDot, yDot, thetaDot;
+
+    return dX;
+}
+
+// Second order unicycle
+void MySecondOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, const double dt)
+{
+    state = RK4(*this, state, control, dt);
+}
+
+Eigen::VectorXd MySecondOrderUnicycle::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
+{
+    // Extract dimensions
+    double radius = this->agent_dim.length/2;
+
+    // Extract states used in dynamics
+    double theta = state[2];
+    double sigma = state[3];
+    double omega = state[4];
+
+    // Calculate rates of change
+    double xDot = sigma*radius*std::cos(theta);
+    double yDot = sigma*radius*std::sin(theta);
+    double thetaDot = omega;
+    double sigmaDot = control[0];
+    double omegaDot = control[1];
+
+    // Assign output
+    Eigen::VectorXd dX = Eigen::VectorXd(state.size());
+    dX << xDot, yDot, thetaDot, sigmaDot, omegaDot;
+
+    return dX;
+}
+
+// Simple car
+void MySimpleCar::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, const double dt)
+{
+    state = RK4(*this, state, control, dt);
+}
+
+Eigen::VectorXd MySimpleCar::dynamics(Eigen::VectorXd &state, const Eigen::VectorXd &control)
+{
+    // Extract dimensions used in dynamics
+    double length = this->agent_dim.length;
+
+    // Extract states used in dynamics
+    double theta = state[2];
+    double v = state[3];
+    double phi = state[4];
+
+    // Calculate rates of change
+    double xDot = v*std::cos(theta);
+    double yDot = v*std::sin(theta);
+    double thetaDot = (v/length)*std::tan(phi);
+    double vDot = control[0];
+    double phiDot = control[1];
+
+    // Assign output
+    Eigen::VectorXd dX = Eigen::VectorXd(state.size());
+    dX << xDot, yDot, thetaDot, vDot, phiDot;
+
+    return dX;
 }

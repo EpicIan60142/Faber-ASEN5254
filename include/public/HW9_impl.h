@@ -28,6 +28,7 @@ struct _AgentReconstructor : public BASE_AGENT_T, public _HW9ReconstructorBase {
 
     virtual void propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, double dt) override {
         AGENT_T agent = std::make_from_tuple<AGENT_T>(args_tuple);
+        agent.agent_dim = this->agent_dim;
         agent.propagate(state, control, dt);
     }
 

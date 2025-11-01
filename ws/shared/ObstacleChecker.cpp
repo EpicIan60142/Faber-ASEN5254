@@ -316,6 +316,62 @@ std::pair<double, Eigen::Vector2d> ObstacleChecker::calcClosestDistance(const Ei
     return {minDistance, minGradient};
 }
 
+/// @brief Function that checks the separating axis theorem between a rectangle and convex polygon
+/// @param rectVertices Vector of rectangle vertices
+/// @param polyVertices Vector of polygon vertices to check against
+/// @param rectAxes Vector of rectangle axes in the length and width directions
+/// @return Boolean indicating whether the rectangle and polygon intersect or not
+bool ObstacleChecker::checkSeparatingAxisTheorem(const std::vector<Eigen::Vector2d> &rectVertices, std::vector<Eigen::Vector2d> &polyVertices, const std::vector<Eigen::Vector2d> &rectAxes)
+{
+    // Test rectangle axes
+    for (const auto& axis : rectAxes) {
+        if (!projectionsOverlap(rectVertices, polyVertices, axis)) {
+            return false; // Separating axis found, no collision
+        }
+    }
+
+    // Test polygon axes (each edge normal)
+    for (size_t i = 0; i < polyVertices.size(); ++i) {
+        size_t next = (i + 1) % polyVertices.size();
+        Eigen::Vector2d edge = polyVertices[next] - polyVertices[i];
+        Eigen::Vector2d normal(-edge.y(), edge.x()); // Perpendicular to edge
+        normal.normalize();
+
+        if (!projectionsOverlap(rectVertices, polyVertices, normal)) {
+            return false; // Separating axis found, no collision
+        }
+    }
+
+    return true; // No separating axis found, collision detected
+}
+
+    // Implementation for SAT projection overlap checking
+bool projectionsOverlap(const std::vector<Eigen::Vector2d>& shape1,
+                       const std::vector<Eigen::Vector2d>& shape2,
+                       const Eigen::Vector2d& axis) {
+
+    // Project shape1 onto axis
+    double min1 = std::numeric_limits<double>::max();
+    double max1 = std::numeric_limits<double>::lowest();
+    for (const auto& vertex : shape1) {
+        double projection = vertex.dot(axis);
+        min1 = std::min(min1, projection);
+        max1 = std::max(max1, projection);
+    }
+
+    // Project shape2 onto axis
+    double min2 = std::numeric_limits<double>::max();
+    double max2 = std::numeric_limits<double>::lowest();
+    for (const auto& vertex : shape2) {
+        double projection = vertex.dot(axis);
+        min2 = std::min(min2, projection);
+        max2 = std::max(max2, projection);
+    }
+
+    // Check if projections overlap
+    return !(max1 < min2 || max2 < min1);
+}
+
 
 /// @brief Function that calculates the centroid of a provided obstacle
 /// @param obstacle Obstacle to calculate centroid of
