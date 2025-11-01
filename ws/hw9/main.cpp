@@ -18,7 +18,7 @@ std::unordered_map<AgentType, std::function<std::shared_ptr<amp::DynamicAgent>()
 int main(int argc, char** argv) {
     // Enable benchmarking
     bool benchmarkKinoRRT = false;
-    bool benchmarkParking = false;
+    bool benchmarkParking = true;
 
     // Select problem, plan, check, and visualize
     std::vector<int> probIdx = {0, 2, 4, 7};
@@ -27,9 +27,11 @@ int main(int argc, char** argv) {
         std::cout << "Planning for problem " << probIdx[i] << std::endl;
         KinodynamicProblem2D prob = problems[probIdx[i]];
         MyKinoRRT kino_planner;
+        amp::Timer timer("KinoRRT Timer");
         KinoPath path = kino_planner.plan(prob, *agentFactory[prob.agent_type]());
+        double computeTime = timer.now(TimeUnit::ms);
         HW9::check(path, prob);
-        if (true)
+        if (path.valid)
         {
             amp::Path2D path2d;
             for (int j = 0; j < path.waypoints.size(); j++)
@@ -39,10 +41,12 @@ int main(int argc, char** argv) {
                 path2d.waypoints.push_back({x,y});
             }
             std::cout << "Path length for problem " << probIdx[i] << ": " << path2d.length() << std::endl;
+            std::cout << "Compute time for problem " << probIdx[i] << ": " << computeTime << " ms" << std::endl;
             Visualizer::makeFigure(prob, path, false); // Set to 'true' to render animation
+
             if (i == probIdx.size()-1)
             {
-                Visualizer::makeFigure(prob, path, true); // Set to 'true' to render animation
+                //Visualizer::makeFigure(prob, path, true); // Set to 'true' to render animation
 
                 // Save control inputs to file
                 std::ofstream outfile("../../data/controlData.csv"); // Saves to the cmake-debug-build/bin directory
@@ -50,10 +54,10 @@ int main(int argc, char** argv) {
                 {
                     outfile << "time,velocity,steeringAngle\n";
                     double cumTime = 0;
-                    for (size_t i = 0; i < path.controls.size(); i++)
+                    for (size_t i = 0; i < path.waypoints.size(); i++)
                     {
                         cumTime += path.durations[i];
-                        outfile << cumTime << "," << path.controls[i][0] << "," << path.controls[i][1] << "\n";
+                        outfile << cumTime << "," << path.waypoints[i][3] << "," << path.waypoints[i][4] << "\n";
                     }
                     outfile.close();
                 }
@@ -62,7 +66,7 @@ int main(int argc, char** argv) {
     }
 
     // Save figures
-    Visualizer::saveFigures(true, "hw9_figs");
+    Visualizer::saveFigures(true, "hw9_figs_new");
 
     // Benchmark KinoRRT if enabled
     if (benchmarkKinoRRT)
@@ -196,7 +200,7 @@ int main(int argc, char** argv) {
         // Define test suite, problem, and number of runs
         std::vector<int> testSuite = {1, 5, 10, 15};
         KinodynamicProblem2D problem = HW9::getParkingProblem();
-        int nRuns = 100;
+        int nRuns = 50;
 
         // Make vectors for results
         std::vector<double> validSols;
@@ -288,7 +292,7 @@ int main(int argc, char** argv) {
     }
 
     // Grade code
-    //HW9::grade<MyKinoRRT, MySingleIntegrator, MyFirstOrderUnicycle, MySecondOrderUnicycle, MySimpleCar>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple());
+    HW9::grade<MyKinoRRT, MySingleIntegrator, MyFirstOrderUnicycle, MySecondOrderUnicycle, MySimpleCar>("Ian.Faber@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple(), std::make_tuple());
 
     return 0;
 }
