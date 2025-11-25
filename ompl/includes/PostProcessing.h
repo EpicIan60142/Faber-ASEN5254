@@ -64,7 +64,7 @@ fs::path appendTimeToFileName(const fs::path& fileName)
 // write solultion to the system
 void write2sys(const og::SimpleSetupPtr problem, const std::vector<Agent*> agents)
 {
-    fs::path sol_dir = "solutions/" + GetCurrentTimeForFileName();
+    fs::path sol_dir = "../solutions/" + GetCurrentTimeForFileName();
     fs::create_directories(sol_dir);
 
     std::string fileName = agents[0]->getName() + ".txt";
@@ -77,10 +77,10 @@ void write2sys(const og::SimpleSetupPtr problem, const std::vector<Agent*> agent
 // write solultion to the system
 void write2sys(const oc::SimpleSetupPtr problem, const std::vector<Agent*> agents, const std::string& problem_name)
 {
-    fs::path sol_dir = "solutions/" + GetCurrentTimeForFileName();
+    fs::path sol_dir = "../solutions/" + GetCurrentTimeForFileName();
     fs::create_directories(sol_dir);
     auto filePath = fs::current_path() / sol_dir / fs::path("problem.yml");
-    std::ifstream src("problems/" + problem_name + ".yml", std::ios::binary);
+    std::ifstream src("../problems/" + problem_name + ".yml", std::ios::binary);
     std::ofstream dst(filePath, std::ios::binary);
     dst << src.rdbuf();
     for (auto agent : agents)
