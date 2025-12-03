@@ -104,8 +104,58 @@ private:
 class World
 {
 public:
-    // Constructor
+    // Constructors
+        // Defgault
     World(){}
+
+        // Copy
+    World(const World& other) {
+        // Copy basic members
+        xBounds_ = other.xBounds_;
+        yBounds_ = other.yBounds_;
+        zBounds_ = other.zBounds_;
+        n_ = other.n_;
+        Rings_ = other.Rings_;  // Rings can be copied normally
+
+        // Deep copy cubesats
+        for (const auto& cubesat_ptr : other.Cubesats_) {
+            auto new_cubesat = std::make_unique<Cubesat>(
+                cubesat_ptr->getName(),
+                cubesat_ptr->getDynamics(),
+                cubesat_ptr->getUMax(),
+                cubesat_ptr->getStartLocation(),
+                cubesat_ptr->getGoalLocation()
+            );
+            Cubesats_.push_back(std::move(new_cubesat));
+        }
+    }
+
+    // Copy assignment operator
+    World& operator=(const World& other) {
+        if (this != &other) {
+            // Copy basic members
+            xBounds_ = other.xBounds_;
+            yBounds_ = other.yBounds_;
+            zBounds_ = other.zBounds_;
+            n_ = other.n_;
+            Rings_ = other.Rings_;
+
+            // Clear existing cubesats and deep copy new ones
+            Cubesats_.clear();
+            for (const auto& cubesat_ptr : other.Cubesats_) {
+                auto new_cubesat = std::make_unique<Cubesat>(
+                    cubesat_ptr->getName(),
+                    cubesat_ptr->getDynamics(),
+                    cubesat_ptr->getUMax(),
+                    cubesat_ptr->getStartLocation(),
+                    cubesat_ptr->getGoalLocation()
+                );
+                Cubesats_.push_back(std::move(new_cubesat));
+            }
+        }
+        return *this;
+    }
+
 
     // methods for dimensions
     void setWorldDimensions(std::pair<double, double> x, std::pair<double, double> y, std::pair<double, double> z)

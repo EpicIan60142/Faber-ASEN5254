@@ -89,22 +89,20 @@ std::vector<oc::PathControl> planSequential(const std::string plannerString, con
     // Current state starts at cubesat start location
     Eigen::VectorXd current_state = cubesat->getStartLocation();
 
-    for (size_t ring_idx = 1; ring_idx < rings.size(); ring_idx++) {
+    for (size_t ring_idx = 1; ring_idx < rings.size(); ring_idx++)
+    {
         OMPL_INFORM("Planning segment %zu: Ring %zu -> Ring %zu",
                     ring_idx, ring_idx-1, ring_idx);
 
         // Create a simplified world for this segment
         World segmentWorld = *w;  // Copy world
 
-        double buffer = 100; // m, buffer in each direction in addition to existing coordinate differences
+        double buffer = 50; // m, buffer in each direction in addition to existing coordinate differences
         auto centerMean = (rings[ring_idx].center_ + rings[ring_idx-1].center_) / 2.0;
         auto xDiff = std::abs(rings[ring_idx].center_[0] - rings[ring_idx-1].center_[0]);
         auto yDiff = std::abs(rings[ring_idx].center_[1] - rings[ring_idx-1].center_[1]);
         auto zDiff = std::abs(rings[ring_idx].center_[2] - rings[ring_idx-1].center_[2]);
-        segmentWorld.setWorldDimensions({centerMean[0] + xDiff + buffer, centerMean[0] - xDiff - buffer}, {centerMean[1] + yDiff + buffer, centerMean[1] - yDiff - buffer}, {centerMean[2] + zDiff + buffer, centerMean[2] - zDiff - buffer});
-
-        // Update cubesat start to current state
-        cubesat->setStartLocation(current_state);
+        segmentWorld.setWorldDimensions({centerMean[0] - xDiff - buffer, centerMean[0] + xDiff + buffer}, {centerMean[1] - yDiff - buffer, centerMean[1] + yDiff + buffer}, {centerMean[2] - zDiff - buffer, centerMean[2] + zDiff + buffer});
 
         // Set goal to current ring
         Eigen::VectorXd ringGoal(6);
@@ -116,7 +114,8 @@ std::vector<oc::PathControl> planSequential(const std::string plannerString, con
         oc::SimpleSetupPtr ss = controlSimpleSetUp(&segmentWorld);
 
         // Configure planner with more aggressive parameters for shorter segments
-        if (plannerString == "SST") {
+        if (plannerString == "SST")
+        {
             auto planner = std::make_shared<oc::SST>(ss->getSpaceInformation());
 
             // More aggressive parameters for shorter segments
@@ -136,7 +135,8 @@ std::vector<oc::PathControl> planSequential(const std::string plannerString, con
         double segment_timeout = 30.0;  // Shorter timeout per segment
         bool solved = ss->solve(segment_timeout);
 
-        if (solved) {
+        if (solved)
+        {
             auto segment_path = ss->getSolutionPath();
             segments.push_back(segment_path);
 
@@ -155,6 +155,9 @@ std::vector<oc::PathControl> planSequential(const std::string plannerString, con
             OMPL_INFORM("Updated start state for next segment: [%.2f, %.2f, %.2f, %.2f, %.2f, %.2f]",
                         current_state[0], current_state[1], current_state[2],
                         current_state[3], current_state[4], current_state[5]);
+
+            // Update cubesat start to current state
+            cubesat->setStartLocation(current_state);
 
         } else {
             OMPL_ERROR("Failed to solve segment %zu", ring_idx);
@@ -196,47 +199,43 @@ oc::PathControl concatenatePaths(const std::vector<oc::PathControl>& segments,
 
 // main planning function -- uses simple setup
 void planControl(std::string planner_string, std::string problem_file) {
-    // Create world from YAML file
-    World *w = yaml2world("../problems/" + problem_file + ".yml");
+    OMPL_INFORM("Starting sequential ring-by-ring planning");
 
-    // Create simple setup object
+    // Plan segments
+    std::vector<oc::PathControl> segments = planSequential(planner_string, problem_file, 0);
+
+    if (segments.empty()) {
+        OMPL_ERROR("Sequential planning failed - no segments completed");
+        return;
+    }
+
+    if (segments.size() < 2) {  // Adjust based on expected number of rings
+        OMPL_WARN("Only completed %zu segments - incomplete solution", segments.size());
+    }
+
+    // Create a dummy SimpleSetup for output formatting
+    World *w = yaml2world("../problems/" + problem_file + ".yml");
     oc::SimpleSetupPtr ss = controlSimpleSetUp(w);
 
-    // Select planner
-    if (planner_string == "SST")
-    {
-        auto planner = std::make_shared<oc::SST>(ss->getSpaceInformation());
-        planner->setGoalBias(0.3);
-        planner->setSelectionRadius(100);
-        planner->setPruningRadius(30);
-        ss->setPlanner(planner);
-    }
-    else if (planner_string == "RRT")
-    {
-        auto planner = std::make_shared<oc::RRT>(ss->getSpaceInformation());
-        planner->setGoalBias(0.3);
-        ss->setPlanner(planner);
-    }
-    else
-    {
-        OMPL_WARN("Planner %s not found. Defaulting to default SST", planner_string.c_str());
-        auto planner = std::make_shared<oc::SST>(ss->getSpaceInformation());
-        ss->setPlanner(planner);
-    }
+    // Combine segments into single path
+    try {
+        oc::PathControl combined_path = concatenatePaths(segments, ss->getSpaceInformation());
 
+        // Set the combined path as the solution
+        ss->getProblemDefinition()->clearSolutionPaths();
+        ss->getProblemDefinition()->addSolutionPath(std::make_shared<oc::PathControl>(combined_path));
 
-    // run automated setup routine
-    ss->setup();
+        OMPL_INFORM("Sequential planning SUCCESS!");
+        OMPL_INFORM("Total segments: %zu", segments.size());
+        OMPL_INFORM("Combined path length: %.2f", combined_path.length());
 
-    // pause for questions
-    std::cout << "Setup Complete. Press ENTER to plan: ";
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-    // solve the instance with a 30 second timeout
-    double max_time = 120.0;
-    bool solved = ss->solve(max_time);
-    if (solved)
+        // Write solution
         write2sys(ss, w->getCubesats(), problem_file);
+
+    } catch (const std::exception& e) {
+        OMPL_ERROR("Failed to concatenate paths: %s", e.what());
+    }
+
 }
 
 int main(int argc, char ** argv) {
