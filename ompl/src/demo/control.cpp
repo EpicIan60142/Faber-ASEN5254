@@ -46,7 +46,6 @@
 #include "GoalRegionDatabase.h"
 #include "PostProcessing.h"
 
-
 namespace fs = std::filesystem;
 namespace ob = ompl::base;
 namespace oc = ompl::control;

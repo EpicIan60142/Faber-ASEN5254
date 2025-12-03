@@ -22,7 +22,10 @@ cmake_print_variables(CMAKE_SOURCE_DIR)
 
 foreach( demoFile ${DEMO_SOURCES} )
     string( REPLACE ".cpp" "" demoName ${demoFile} )
-    add_executable( ${demoName} src/${demoFile} )
+    add_executable( ${demoName} src/${demoFile}
+            src/cubesatRacing.cpp
+            includes/OptimizationObjectiveDatabase.h
+    )
     # Make sure YourLib is linked to each app
     target_link_libraries( ${demoName} ${OMPL_LIBRARIES} yaml-cpp )
 endforeach( demoFile ${DEMO_SOURCES} )

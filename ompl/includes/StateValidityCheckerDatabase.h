@@ -34,6 +34,8 @@
 
 /* Author: Justin Kottinger */
 
+#pragma once
+
 #include <boost/geometry.hpp>
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/base/spaces/SO2StateSpace.h>
@@ -42,65 +44,24 @@
 
 namespace ob = ompl::base;
 
-class isStateValid_2D : public ob::StateValidityChecker
+class isStateValid_3D : public ob::StateValidityChecker
 {
 public:
-    isStateValid_2D(const ob::SpaceInformationPtr &si, const World *w, const Agent *a) : ob::StateValidityChecker(si) {
+    isStateValid_3D(const ob::SpaceInformationPtr &si, const World *w, const Cubesat *c) : ob::StateValidityChecker(si) {
         si_ = si.get();
         w_ = w;
-        a_ = a;
+        c_ = c;
     }
 
     bool isValid(const ob::State *state) const override {
         if (!si_->satisfiesBounds(state))
             return false;
 
-        // Get xy state and theta state (in rad [0, 2*pi]) from state object
-        auto compState = state->as<ob::CompoundStateSpace::StateType>();
-        auto xyState = compState->as<ob::RealVectorStateSpace::StateType>(0);
-        const double cx = xyState->values[0];
-        const double cy = xyState->values[1];
-        const double theta = compState->as<ob::SO2StateSpace::StateType>(1)->value;
-
-        // Get params from car object
-        const double half_l = a_->getShape()[0] / 2;
-        const double half_w = a_->getShape()[1] / 2;
-
-        double cos_theta = std::cos(theta);
-        double sin_theta = std::sin(theta);
-
-        // Center point
-        double ref_x = cx + half_l * cos_theta;
-        double ref_y = cy + half_l * sin_theta;
-
-        // Precompute repeated terms
-        double l_cos = half_l * cos_theta;
-        double l_sin = half_l * sin_theta;
-        double w_cos = half_w * cos_theta;
-        double w_sin = half_w * sin_theta;
-
-        // turn (x,y, theta), width, length to a polygon object
-        // see https://stackoverflow.com/questions/41898990/find-corners-of-a-rotated-rectangle-given-its-center-point-and-rotation
-        // VERTICES:
-        std::string top_right = std::to_string(ref_x + l_cos - w_sin) + " " + std::to_string(ref_y + l_sin + w_cos);
-        std::string top_left = std::to_string(ref_x - l_cos - w_sin) + " " + std::to_string(ref_y - l_sin + w_cos);
-        std::string bottom_left = std::to_string(ref_x - l_cos + w_sin) + " " + std::to_string(ref_y - l_sin - w_cos);
-        std::string bottom_right = std::to_string(ref_x + l_cos + w_sin) + " " + std::to_string(ref_y + l_sin - w_cos);
-
-        // convert to string for easy initializataion
-        std::string points = "POLYGON((" + bottom_left + "," + bottom_right + "," + top_right + "," + top_left + "," + bottom_left + "))";
-        polygon agent;
-        boost::geometry::read_wkt(points, agent);
-
-        // check agent is disjoint from all obstacles
-        for (Obstacle o : w_->getObstacles())
-            if (!boost::geometry::disjoint(agent, o.poly_))
-                return false;
         return true;
     }
 
 private:
     const ob::SpaceInformation *si_;
     const World *w_;
-    const Agent *a_;
+    const Cubesat *c_;
 };

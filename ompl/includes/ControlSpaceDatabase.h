@@ -34,20 +34,24 @@
 
 /* Author: Justin Kottinger */
 
+#pragma once
+
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/control/spaces/RealVectorControlSpace.h>
+
+#include "World.h"
 
 namespace ob = ompl::base;
 namespace oc = ompl::control;
 
-oc::ControlSpacePtr createUniform2DRealVectorControlSpace(ob::StateSpacePtr &space)
+oc::ControlSpacePtr createUniform3DRealVectorControlSpace(ob::StateSpacePtr &space, Cubesat *c)
 {
-    auto cspace(std::make_shared<oc::RealVectorControlSpace>(space, 2));
+    auto cspace(std::make_shared<oc::RealVectorControlSpace>(space, 3));
     
     // set the bounds for the control space
-    ob::RealVectorBounds cbounds(2);
-    cbounds.setLow(-1);
-    cbounds.setHigh(1);
+    ob::RealVectorBounds cbounds(3);
+    cbounds.setLow(-c->getUMax());
+    cbounds.setHigh(c->getUMax());
     cspace->setBounds(cbounds);
 
     return cspace;

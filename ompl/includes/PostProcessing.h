@@ -62,12 +62,12 @@ fs::path appendTimeToFileName(const fs::path& fileName)
 }
 
 // write solultion to the system
-void write2sys(const og::SimpleSetupPtr problem, const std::vector<Agent*> agents)
+void write2sys(const og::SimpleSetupPtr problem, const std::vector<Cubesat*> cubesats)
 {
     fs::path sol_dir = "../solutions/" + GetCurrentTimeForFileName();
     fs::create_directories(sol_dir);
 
-    std::string fileName = agents[0]->getName() + ".txt";
+    std::string fileName = cubesats[0]->getName() + ".txt";
     auto filePath = fs::current_path() / sol_dir / fs::path(fileName); /// appendTimeToFileName(fileName); // e.g. MyPrettyFile_2018-06-09_01-42-00.txt
     std::ofstream file(filePath);
     const og::PathGeometric p = problem->getSolutionPath();
@@ -75,7 +75,7 @@ void write2sys(const og::SimpleSetupPtr problem, const std::vector<Agent*> agent
 }
 
 // write solultion to the system
-void write2sys(const oc::SimpleSetupPtr problem, const std::vector<Agent*> agents, const std::string& problem_name)
+void write2sys(const oc::SimpleSetupPtr problem, const std::vector<Cubesat*> cubesats, const std::string& problem_name)
 {
     fs::path sol_dir = "../solutions/" + GetCurrentTimeForFileName();
     fs::create_directories(sol_dir);
@@ -83,13 +83,13 @@ void write2sys(const oc::SimpleSetupPtr problem, const std::vector<Agent*> agent
     std::ifstream src("../problems/" + problem_name + ".yml", std::ios::binary);
     std::ofstream dst(filePath, std::ios::binary);
     dst << src.rdbuf();
-    for (auto agent : agents)
+    for (auto cubesat : cubesats)
     {
-        std::string fileName = agent->getName() + ".txt";
+        std::string fileName = cubesat->getName() + ".txt";
         filePath = fs::current_path() / sol_dir / fs::path(fileName); /// appendTimeToFileName(fileName); // e.g. MyPrettyFile_2018-06-09_01-42-00.txt
         std::ofstream file(filePath);
         const oc::PathControl p = problem->getSolutionPath();
-        // p.printAsMatrix(file); // save output as concatenated [state, control, duration] matrix
+        //p.printAsMatrix(file); // save output as concatenated [state, control, duration] matrix
         p.asGeometric().printAsMatrix(file); // save output as states only at each propogation step size
     }
 

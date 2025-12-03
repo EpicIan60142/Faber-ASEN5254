@@ -34,27 +34,52 @@
 
 /* Author: Justin Kottinger */
 
+#pragma once
+
 #include <ompl/base/goals/GoalRegion.h>
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <utility>
 
 namespace ob = ompl::base;
 
-class GoalRegion2ndOrderCar: public ob::GoalRegion
+class GoalRegionCubesat: public ob::GoalRegion
 {
 public:
-    GoalRegion2ndOrderCar(const ob::SpaceInformationPtr &si, double gx, double gy): 
-        ob::GoalRegion(si), gx_(gx), gy_(gy)
+    GoalRegionCubesat(const ob::SpaceInformationPtr &si, Eigen::VectorXd goal, Ring ring)
+                        : ob::GoalRegion(si), goal_(goal), ring_(ring)
     {
-        threshold_ = 0.5;
+        threshold_ = std::min(ring.a_, ring.b_);
     }
     
     double distanceGoal(const ob::State *st) const override
     {
-        const double* robot_pos = st->as<ob::CompoundStateSpace::StateType>()->as<ob::RealVectorStateSpace::StateType>(0)->values;
-        return sqrt(pow(robot_pos[0] - gx_, 2) + pow(robot_pos[1] - gy_, 2));
+        const double *sat_pos_OMPL = st->as<ob::CompoundStateSpace::StateType>()->as<ob::RealVectorStateSpace::StateType>(0)->values;
+        Eigen::VectorXd sat_pos(3);
+        sat_pos << sat_pos_OMPL[0], sat_pos_OMPL[1], sat_pos_OMPL[2];
+
+        Eigen::VectorXd goal_pos(3);
+        goal_pos << goal_[0], goal_[1], goal_[2];
+
+        Eigen::VectorXd diff = sat_pos - goal_pos;
+        return diff.norm();
     }
+
+    bool isSatisfied(const ob::State *st) const override
+    {
+        const double *sat_vel_OMPL = st->as<ob::CompoundStateSpace::StateType>()->as<ob::RealVectorStateSpace::StateType>(0)->values;
+
+        Eigen::VectorXd heading(3);
+        heading << sat_vel_OMPL[3], sat_vel_OMPL[4], sat_vel_OMPL[5];
+        heading = heading/heading.norm();
+
+        double angleDiff = std::acos(heading.dot(ring_.normal_)); // angle between heading and ring normal in radians
+
+        return (distanceGoal(st) <= std::min(ring_.a_, ring_.b_)) && (angleDiff <= angleEpsilon_);
+    }
+
 private:
-    const double gx_;
-    const double gy_;
+    Eigen::VectorXd goal_; // Goal state
+    Ring ring_; // Goal ring
+    double angleEpsilon_ = 89*M_PI/180; // Angle tolerance on final velocity heading - want to fly through the ring
+
 };
