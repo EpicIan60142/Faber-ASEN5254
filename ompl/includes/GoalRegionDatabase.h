@@ -66,10 +66,12 @@ public:
 
     bool isSatisfied(const ob::State *st) const override
     {
-        const double *sat_vel_OMPL = st->as<ob::CompoundStateSpace::StateType>()->as<ob::RealVectorStateSpace::StateType>(0)->values;
+        const double *sat_vel_OMPL = st->as<ob::CompoundStateSpace::StateType>()->as<ob::RealVectorStateSpace::StateType>(1)->values;
+
+        OMPL_INFORM("isSatisfied called!");
 
         Eigen::VectorXd heading(3);
-        heading << sat_vel_OMPL[3], sat_vel_OMPL[4], sat_vel_OMPL[5];
+        heading << sat_vel_OMPL[0], sat_vel_OMPL[1], sat_vel_OMPL[2];
         heading = heading/heading.norm();
 
         double angleDiff = std::acos(heading.dot(ring_.normal_)); // angle between heading and ring normal in radians

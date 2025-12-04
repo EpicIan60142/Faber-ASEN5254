@@ -221,20 +221,20 @@ private:
 };
 
 // function that parses YAML file to world object
-inline World* yaml2world(std::string file)
+inline World* yaml2world(std::string file, bool verbose)
 {
     YAML::Node config;
     World *w = new World();
     try
     {
-        OMPL_INFORM("Path to Problem File: %s", file.c_str());
+        OMPL_INFORM("    Path to Problem File: %s", file.c_str());
         config = YAML::LoadFile(file);
         std::cout << "" << std::endl;
-        OMPL_INFORM("File loaded successfully. Parsing...");
+        OMPL_INFORM("    File loaded successfully. Parsing...");
     }
     catch (const std::exception& e) 
     {
-        OMPL_ERROR("Invalid file path. Aborting prematurely to avoid critical error.");
+        OMPL_ERROR("    Invalid file path. Aborting prematurely to avoid critical error.");
         exit(1);
     }
     try
@@ -298,14 +298,15 @@ inline World* yaml2world(std::string file)
                                                   start, goal);
             w->addCubesat(std::move(c));
         }
-        OMPL_INFORM("Parsing Complete.");
+        OMPL_INFORM("    Parsing Complete.");
         std::cout << "" << std::endl;
-        w->printWorld();
+        if (verbose)
+            w->printWorld();
 
     }
     catch (const std::exception& e) 
     {
-        OMPL_ERROR("Error During Parsing. Aborting prematurely to avoid critical error.");
+        OMPL_ERROR("    Error During Parsing. Aborting prematurely to avoid critical error.");
         exit(1);
     }
     return w;
