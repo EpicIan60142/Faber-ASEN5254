@@ -39,7 +39,7 @@ oc::SimpleSetupPtr controlSimpleSetUp(const World *w, const size_t ring_idx, Cub
         CubesatCWHODE(q, control, qdot, w->getMeanMotion());
     };
     auto odeSolver(std::make_shared<oc::ODEBasicSolver<>>(ss->getSpaceInformation(), odeFunction));
-    ss->setStatePropagator(oc::ODESolver::getStatePropagator(odeSolver));//, &SecondOrderCarODEPostIntegration));
+    ss->setStatePropagator(oc::ODESolver::getStatePropagator(odeSolver));
 
     // Set up optimization objectives
     ss->setOptimizationObjective(getMinimizeCostObjective(ss->getSpaceInformation(), w->getRings()[ring_idx]));
@@ -245,7 +245,7 @@ void planControl(std::string planner_string, std::string problem_file)
 
     for (int i = 0; i < 4; i++)
     {
-        // Create a dummy world for output formatting
+        // Create a dummy world for output formatting and debug logging
         World *w = yaml2world("../problems/" + problem_file + ".yml", false);
 
         // Select cubesat
