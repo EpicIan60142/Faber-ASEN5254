@@ -34,187 +34,279 @@
 
 /* Author: Justin Kottinger */
 
+#pragma once
+
 #include <boost/geometry/io/io.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/geometries.hpp>
 #include <ompl/tools/config/SelfConfig.h>
 #include <yaml-cpp/yaml.h>
-
+#include "Eigen/Dense"
+#include <memory>
 
 typedef boost::geometry::model::d2::point_xy<double> point;
 typedef boost::geometry::model::polygon<point> polygon;
 
-// rectangular Obstacle defined by two points (xMin, yMin) and (xMax, yMax)
-struct Obstacle {
-    const double xMin_;
-    const double yMin_;
-    const double xMax_;
-    const double yMax_;
-    const polygon poly_;
+// Ring defined by a center, normal vector, semi-major and -minor axes, and a DCM
+struct Ring {
+    // Members
+    Eigen::Vector3d center_;
+    Eigen::Vector3d normal_;
+    double a_;
+    double b_;
+    Eigen::Matrix3d NR_;
 
-    void printPoints() const
+    // Methods
+    void printCenter() const
     {
-        auto exterior_points = boost::geometry::exterior_ring(poly_);
-        for (int i=0; i<exterior_points.size(); i++)
+        for (int i = 0; i < center_.size(); i++)
         {
-            std::cout << boost::geometry::get<0>(exterior_points[i]) << " " << boost::geometry::get<1>(exterior_points[i]) <<std::endl;
+            std::cout << "centerX: " << center_[0] << "centerY: " << center_[1] << "centerZ" << center_[2] << std::endl;
         }
-    }
-    polygon::ring_type getPoints() const
-    {
-        return boost::geometry::exterior_ring(poly_);
     }
 };
 
 
-// An agent has a name, shape, dynamics, start and goal regions
+// A cubesat has a name, dynamics, max control, and start and goal regions
 // Created as class to keep important variables safe
-class Agent
+class Cubesat
 {
 public:
-    Agent(std::string name, std::string dyn, std::vector<double> shape, std::vector<double> s, std::vector<double> g) {
+    // Constructor
+    Cubesat(std::string name, std::string dyn, double uMax, Eigen::VectorXd s, Eigen::VectorXd g) {
         name_ = name;
         dynamics_ = dyn;
-        shape_ = shape;
+        uMax_ = uMax;
         start_ = s;
         goal_ = g;
     }
-    std::string getName() const {return name_;};
-    std::string getDynamics() const {return dynamics_;};
-    std::vector<double> getShape() const {return shape_;};
-    std::vector<double> getStartLocation() const {return start_;};
-    std::vector<double> getGoalLocation() const {return goal_;};
+
+    // Getters
+    std::string getName() const {return name_;}
+    std::string getDynamics() const {return dynamics_;}
+    double getUMax() const {return uMax_;}
+    Eigen::VectorXd getStartLocation() const {return start_;}
+    Eigen::VectorXd getGoalLocation() const {return goal_;}
+
+    // Setters
+    void setStartLocation(Eigen::VectorXd s) {start_ = s;}
+    void setGoalLocation(Eigen::VectorXd g) {goal_ = g;}
+
 private:
     std::string name_;
     std::string dynamics_;
-    std::vector<double> shape_;
-    std::vector<double> start_;
-    std::vector<double> goal_;
+    double uMax_;
+    Eigen::VectorXd start_;
+    Eigen::VectorXd goal_;
 };
 
-
-
-// world class holds all relevent data in the world that is used by OMPL
+// World class holds all relevent data in the world that is used by OMPL
 class World
 {
 public:
+    // Constructors
+        // Defgault
     World(){}
-    // methods for dimensions
-    void setWorldDimensions(std::pair<double, double> x, std::pair<double, double> y){xBounds_ = x; yBounds_ = y;};
-    std::vector<std::pair<double, double>> getWorldDimensions() const {return {xBounds_, yBounds_};};
-    void printWorldDimensions(){OMPL_INFORM("Space Dimensions: [%0.2f, %0.2f, %0.2f, %0.2f]", xBounds_.first, yBounds_.first, xBounds_.second, yBounds_.second);}
-    // methods for obstacles
-    void addObstacle(Obstacle obs){Obstacles_.push_back(obs);};
-    std::vector<Obstacle> getObstacles() const {return Obstacles_;};
-    // methods for agents
-    void addAgent(Agent *a){Agents_.push_back(a);};
-    std::vector<Agent*> getAgents() const {return Agents_;};
-    // printing methods for usability
-    void printObstacles()
-    {
-        OMPL_INFORM("%d Obstacle(s) (xMin, yMin, xMax, yMax): ", Obstacles_.size());
-        for (Obstacle o: Obstacles_)
-        {
-            OMPL_INFORM("   - Obstacle: [%0.2f, %0.2f, %0.2f, %0.2f]", o.xMin_, o.yMin_, o.xMax_, o.yMax_);
+
+        // Copy
+    World(const World& other) {
+        // Copy basic members
+        xBounds_ = other.xBounds_;
+        yBounds_ = other.yBounds_;
+        zBounds_ = other.zBounds_;
+        n_ = other.n_;
+        Rings_ = other.Rings_;  // Rings can be copied normally
+
+        // Deep copy cubesats
+        for (const auto& cubesat_ptr : other.Cubesats_) {
+            auto new_cubesat = std::make_unique<Cubesat>(
+                cubesat_ptr->getName(),
+                cubesat_ptr->getDynamics(),
+                cubesat_ptr->getUMax(),
+                cubesat_ptr->getStartLocation(),
+                cubesat_ptr->getGoalLocation()
+            );
+            Cubesats_.push_back(std::move(new_cubesat));
         }
     }
-    void printAgents()
+
+    // Copy assignment operator
+    World& operator=(const World& other) {
+        if (this != &other) {
+            // Copy basic members
+            xBounds_ = other.xBounds_;
+            yBounds_ = other.yBounds_;
+            zBounds_ = other.zBounds_;
+            n_ = other.n_;
+            Rings_ = other.Rings_;
+
+            // Clear existing cubesats and deep copy new ones
+            Cubesats_.clear();
+            for (const auto& cubesat_ptr : other.Cubesats_) {
+                auto new_cubesat = std::make_unique<Cubesat>(
+                    cubesat_ptr->getName(),
+                    cubesat_ptr->getDynamics(),
+                    cubesat_ptr->getUMax(),
+                    cubesat_ptr->getStartLocation(),
+                    cubesat_ptr->getGoalLocation()
+                );
+                Cubesats_.push_back(std::move(new_cubesat));
+            }
+        }
+        return *this;
+    }
+
+
+    // methods for dimensions
+    void setWorldDimensions(std::pair<double, double> x, std::pair<double, double> y, std::pair<double, double> z)
     {
-        OMPL_INFORM("%d Agents: ", Agents_.size());
-        for (Agent *a: Agents_)
+        xBounds_ = {x.first, x.second};
+        yBounds_ = {y.first, y.second};
+        zBounds_ = {z.first, z.second};
+    }
+    void setMeanMotion(double n){n_ = n;}
+    std::vector<std::pair<double, double>> getWorldDimensions() const {return {xBounds_, yBounds_, zBounds_};}
+    double getMeanMotion() const {return n_;}
+    void printWorldDimensions(){OMPL_INFORM("Space Dimensions: [%0.2f, %0.2f; %0.2f, %0.2f; %0.2f, %0.2f]", xBounds_.first, xBounds_.second, yBounds_.first, yBounds_.second, zBounds_.first, zBounds_.second);}
+
+    // methods for rings
+    void addRing(Ring ring){Rings_.push_back(ring);}
+    std::vector<Ring> getRings() const {return Rings_;}
+
+    // methods for cubesats
+    void addCubesat(std::unique_ptr<Cubesat> c){Cubesats_.push_back(std::move(c)); }
+    std::vector<Cubesat*> getCubesats() const
+    {
+        std::vector<Cubesat*> result;
+        for (const auto &c : Cubesats_)
+            result.push_back(c.get());
+        return result;
+    }
+
+    // printing methods for usability
+    void printRings()
+    {
+        OMPL_INFORM("%d Rings (x, y; z): ", Rings_.size());
+        for (Ring r: Rings_)
         {
-            OMPL_INFORM("   - Name: %s", a->getName().c_str());
-            OMPL_INFORM("     Dynamics: %s", a->getDynamics().c_str());
-            OMPL_INFORM("     Start: [%0.2f, %0.2f]", a->getStartLocation()[0], a->getStartLocation()[1]);
-            OMPL_INFORM("     Goal: [%0.2f, %0.2f]", a->getGoalLocation()[0], a->getGoalLocation()[1]);
+            OMPL_INFORM("   - Ring: [%0.2f, %0.2f, %0.2f]", r.center_[0], r.center_[1], r.center_[2]);
+        }
+    }
+    void printCubesats()
+    {
+        OMPL_INFORM("%d Cubesats: ", Cubesats_.size());
+        for (const auto &cPtr : Cubesats_)
+        {
+            auto c = cPtr.get();
+            OMPL_INFORM("   - Name: %s", c->getName().c_str());
+            OMPL_INFORM("     Dynamics: %s", c->getDynamics().c_str());
+            OMPL_INFORM("     uMax: %0.3f", c->getUMax());
+            OMPL_INFORM("     Start: [%0.2f, %0.2f, %0.2f]", c->getStartLocation()[0], c->getStartLocation()[1], c->getStartLocation()[2]);
+            OMPL_INFORM("     Goal: [%0.2f, %0.2f, %0.2f]", c->getGoalLocation()[0], c->getGoalLocation()[1], c->getGoalLocation()[2]);
         }
     }
     void printWorld()
     {
         printWorldDimensions();
-        printObstacles();
-        printAgents();
+        printRings();
+        printCubesats();
     }
 private:
     std::pair<double, double> xBounds_;
     std::pair<double, double> yBounds_;
-    std::vector<Obstacle> Obstacles_;
-    std::vector<Agent*> Agents_;
+    std::pair<double, double> zBounds_;
+    double n_; // Course origin mean motion
+    std::vector<Ring> Rings_;
+    std::vector<std::unique_ptr<Cubesat>> Cubesats_;
 };
 
 // function that parses YAML file to world object
-World* yaml2world(std::string file)
+inline World* yaml2world(std::string file, bool verbose)
 {
     YAML::Node config;
     World *w = new World();
     try
     {
-        OMPL_INFORM("Path to Problem File: %s", file.c_str());
+        OMPL_INFORM("    Path to Problem File: %s", file.c_str());
         config = YAML::LoadFile(file);
         std::cout << "" << std::endl;
-        OMPL_INFORM("File loaded successfully. Parsing...");
+        OMPL_INFORM("    File loaded successfully. Parsing...");
     }
     catch (const std::exception& e) 
     {
-        OMPL_ERROR("Invalid file path. Aborting prematurely to avoid critical error.");
+        OMPL_ERROR("    Invalid file path. Aborting prematurely to avoid critical error.");
         exit(1);
     }
     try
     {        
         // grab dimensions from problem definition
-        const auto& dims = config["Map"]["Dimensions"];
+        const auto& dims = config["Course"]["Dimensions"];
         const double x_min = dims[0].as<double>();
-        const double y_min = dims[1].as<double>();
-        const double x_max = dims[2].as<double>();
+        const double x_max = dims[1].as<double>();
+        const double y_min = dims[2].as<double>();
         const double y_max = dims[3].as<double>();
-        w->setWorldDimensions({x_min, x_max}, {y_min, y_max});
-   
-        // set Obstacles
-        const auto& obs = config["Map"]["Obstacles"];
-        for (int i=0; i < obs.size(); i++)
-        {
-            std::string name = "obstacle" + std::to_string(i);
-            const double minX = obs[name][0].as<double>();
-            const double minY = obs[name][1].as<double>();
-            const double maxX = obs[name][2].as<double>();
-            const double maxY = obs[name][3].as<double>();            
-            // TOP RIGHT VERTEX:
-            std::string top_right = std::to_string(maxX) + " " + std::to_string(maxY);
-            // TOP LEFT VERTEX:
-            std::string top_left = std::to_string(minX) + " " + std::to_string(maxY);
-            // BOTTOM LEFT VERTEX:
-            std::string bottom_left = std::to_string(minX) + " " + std::to_string(minY);
-            // BOTTOM RIGHT VERTEX:
-            std::string bottom_right = std::to_string(maxX) + " " + std::to_string(minY);
+        const double z_min = dims[4].as<double>();
+        const double z_max = dims[5].as<double>();
+        w->setWorldDimensions({x_min, x_max}, {y_min, y_max}, {z_min, z_max});
 
-            // convert to string for easy initializataion
-            std::string points = "POLYGON((" + bottom_left + "," + bottom_right + "," + top_right + "," + top_left + "," + bottom_left + "))";
-            polygon poly;
-            boost::geometry::read_wkt(points,poly);
-            Obstacle o = {minX, minY, maxX, maxY, poly};
-            w->addObstacle(o);
+        const double n = config["Course"]["MeanMotion"].as<double>();
+        w->setMeanMotion(n);
+
+        // set rings
+        const auto& ring = config["Course"]["Rings"];
+        for (int i=0; i < ring.size(); i++)
+        {
+            // Look at current ring
+            std::string name = "ring" + std::to_string(i);
+
+            // Pull out ring center
+            Eigen::Vector3d center;
+            center << ring[name][0].as<double>(), ring[name][1].as<double>(), ring[name][2].as<double>();
+
+            // Pull out ring normal
+            Eigen::Vector3d normal;
+            normal << ring[name][3].as<double>(), ring[name][4].as<double>(), ring[name][5].as<double>();
+
+            // Pull out semi-major and -minor axes
+            const double a = ring[name][6].as<double>();
+            const double b = ring[name][7].as<double>();
+
+            // Pull out DCM to Inertial from Ring frame
+            Eigen::Matrix3d NR;
+            NR << ring[name][8].as<double>(), ring[name][9].as<double>(), ring[name][10].as<double>(),
+                  ring[name][11].as<double>(), ring[name][12].as<double>(), ring[name][13].as<double>(),
+                  ring[name][14].as<double>(), ring[name][15].as<double>(), ring[name][16].as<double>();
+
+            // Add ring to the world
+            Ring r = {center, normal, a, b, NR};
+            w->addRing(r);
         }
 
-        // Define the agents
-        const auto& agents = config["Agents"];
-        for (int i=0; i < agents.size(); i++)
+        // Define cubesats
+        const auto& cubesats = config["Cubesats"];
+        for (int i = 0; i < cubesats.size(); i++)
         {
-            std::string name = "agent" + std::to_string(i);
-            const std::vector<double> shape{agents[name]["Shape"][0].as<double>(), agents[name]["Shape"][1].as<double>()};
-            std::cout << "Shape: " << shape[0] << " " << shape[1] << std::endl;
-            const std::vector<double> start{agents[name]["Start"][0].as<double>(), agents[name]["Start"][1].as<double>()};
-            const std::vector<double> goal{agents[name]["Goal"][0].as<double>(), agents[name]["Goal"][1].as<double>()};
-            Agent *a = new Agent(name, agents[name]["Model"].as<std::string>(), shape, start, goal);
-            w->addAgent(a);
+            std::string name = "sat" + std::to_string(i);
+            Eigen::VectorXd start(6);
+            start << cubesats[name]["Start"][0].as<double>(), cubesats[name]["Start"][1].as<double>(), cubesats[name]["Start"][2].as<double>(),
+                     cubesats[name]["Start"][3].as<double>(), cubesats[name]["Start"][4].as<double>(), cubesats[name]["Start"][5].as<double>();
+
+            Eigen::VectorXd goal(6);
+            goal << w->getRings()[1].center_[0], w->getRings()[1].center_[1], w->getRings()[1].center_[2],
+                    w->getRings()[1].normal_[0], w->getRings()[1].normal_[1], w->getRings()[1].normal_[2];
+            auto c = std::make_unique<Cubesat>(cubesats[name]["Name"].as<std::string>(), cubesats[name]["Model"].as<std::string>(), cubesats[name]["uMax"].as<double>(),
+                                                  start, goal);
+            w->addCubesat(std::move(c));
         }
-        OMPL_INFORM("Parsing Complete.");
+        OMPL_INFORM("    Parsing Complete.");
         std::cout << "" << std::endl;
-        w->printWorld();
+        if (verbose)
+            w->printWorld();
 
     }
     catch (const std::exception& e) 
     {
-        OMPL_ERROR("Error During Parsing. Aborting prematurely to avoid critical error.");
+        OMPL_ERROR("    Error During Parsing. Aborting prematurely to avoid critical error.");
         exit(1);
     }
     return w;

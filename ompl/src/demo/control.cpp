@@ -46,7 +46,6 @@
 #include "GoalRegionDatabase.h"
 #include "PostProcessing.h"
 
-
 namespace fs = std::filesystem;
 namespace ob = ompl::base;
 namespace oc = ompl::control;
@@ -98,7 +97,7 @@ oc::SimpleSetupPtr controlSimpleSetUp(const World *w)
 // main planning function -- uses simple setup
 void planControl(std::string planner_string, std::string problem_file) {
     // Create world from YAML file
-    World *w = yaml2world("problems/" + problem_file + ".yml");
+    World *w = yaml2world("../problems/" + problem_file + ".yml");
     // Create simple setup object
     oc::SimpleSetupPtr ss = controlSimpleSetUp(w);
 
@@ -129,7 +128,7 @@ void planControl(std::string planner_string, std::string problem_file) {
 }
 
 int main(int argc, char ** argv) {
-    std::string plannerName = "RRT";
+    std::string plannerName = "SST";
     std::string problem = "WS1Car";
     OMPL_INFORM("Planning for OMPL Lecture Example using Control Planning with %s", plannerName.c_str());
     planControl(plannerName, problem);

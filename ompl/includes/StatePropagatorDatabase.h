@@ -34,6 +34,8 @@
 
 /* Author: Justin Kottinger */
 
+#pragma once
+
 #include <ompl/control/ODESolver.h>
 #include <ompl/base/spaces/SO2StateSpace.h>
 #include <ompl/control/StatePropagator.h>
@@ -46,34 +48,28 @@
 namespace ob = ompl::base;
 namespace oc = ompl::control;
 
-void SecondOrderCarODE (const oc::ODESolver::StateType& q, const oc::Control* control, oc::ODESolver::StateType& qdot)
+void CubesatCWHODE (const oc::ODESolver::StateType& q, const oc::Control* control, oc::ODESolver::StateType& qdot, double n)
 {
-    // q = x, y, v, phi, theta
-    // c = a, phidot
+    // q = x, y, z, v_x, v_y, v_z
+    // u = [u_x, u_y, u_z]
     const double *u = control->as<oc::RealVectorControlSpace::ControlType>()->values;
+
     // state params
-    const double v = q[2];
-    const double phi = q[3];
-    const double theta = q[4];
-    const double carLength = 1.0;
+    const double x = q[0];
+    const double y = q[1];
+    const double z = q[2];
+    const double v_x = q[3];
+    const double v_y = q[4];
+    const double v_z = q[5];
 
     // Zero out qdot
-    qdot.resize (q.size (), 0);
+    qdot.resize (q.size(), 0);
  
     // vehicle model
-    qdot[0] = v * cos(theta);
-    qdot[1] = v * sin(theta);
-    qdot[2] = u[0];
-    qdot[3] = u[1];
-    qdot[4] = (v / carLength) * tan(phi);
-}
-
-// callback for putting angle [0, 2pi]
-void SecondOrderCarODEPostIntegration (const ob::State* /*state*/, const oc::Control* /*control*/, const double /*duration*/, ob::State *result)
-{
-    // wrap the angle
-    ob::CompoundState* cs = result->as<ob::CompoundState>();
-    ob::SO2StateSpace::StateType* angleState1 = cs->as<ob::SO2StateSpace::StateType>(1);
-    ob::SO2StateSpace SO2;
-    SO2.enforceBounds(angleState1);
+    qdot[0] = v_x;
+    qdot[1] = v_y;
+    qdot[2] = v_z;
+    qdot[3] = 2*n*v_y + 3*n*n*x + u[0];
+    qdot[4] = -2*n*v_x + u[1];
+    qdot[5] = -n*n*z + u[2];
 }

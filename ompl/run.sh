@@ -40,12 +40,9 @@ make
 if [ $? == 0 ]; then
     cd ..
     if [ -n "$executable" ]; then
-        ./build/"$executable" "${@:2}"
-        if [ $? -eq 0 ]; then
-            python3 visualize.py
-        else
-            echo "Executable $executable failed with exit code $?."
-        fi
+        cd build
+        ./"$executable" "${@:2}"
+        cd ..
     else
         echo "Executable not specified."
     fi

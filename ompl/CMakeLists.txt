@@ -9,7 +9,6 @@ find_package(yaml-cpp REQUIRED)
 include_directories(
     includes
     ${OMPL_INCLUDE_DIRS}
-    ${YAML_CPP_INCLUDE_DIRS}
 )
 
 link_directories(${OMPL_LIBRARY_DIRS})
@@ -23,9 +22,12 @@ cmake_print_variables(CMAKE_SOURCE_DIR)
 
 foreach( demoFile ${DEMO_SOURCES} )
     string( REPLACE ".cpp" "" demoName ${demoFile} )
-    add_executable( ${demoName} src/${demoFile} )
+    add_executable( ${demoName} src/${demoFile}
+            src/cubesatRacing.cpp
+            includes/OptimizationObjectiveDatabase.h
+    )
     # Make sure YourLib is linked to each app
-    target_link_libraries( ${demoName} ${OMPL_LIBRARIES} ${YAML_CPP_LIBRARIES} )
+    target_link_libraries( ${demoName} ${OMPL_LIBRARIES} yaml-cpp )
 endforeach( demoFile ${DEMO_SOURCES} )
 
 # ignore BOOST deprecated headers

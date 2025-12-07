@@ -34,30 +34,54 @@
 
 /* Author: Justin Kottinger */
 
+#pragma once
+
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/base/spaces/SO2StateSpace.h>
 #include <cmath>
 
 namespace ob = ompl::base;
 
-ob::StateSpacePtr createBounded2ndOrderCarStateSpace(const std::pair<double, double> x_limits, const std::pair<double, double> y_limits)
+ob::StateSpacePtr createBoundedCubesatStateSpace(const std::pair<double, double> x_limits, const std::pair<double, double> y_limits, const std::pair<double, double> z_limits)
 {
+    // Compound state space
     ob::StateSpacePtr space = std::make_shared<ob::CompoundStateSpace>();
-    space->as<ob::CompoundStateSpace>()->addSubspace(ob::StateSpacePtr(new ob::RealVectorStateSpace(4)), 1.0);
-    space->as<ob::CompoundStateSpace>()->addSubspace(ob::StateSpacePtr(new ob::SO2StateSpace()), 1.0);
-    space->as<ob::CompoundStateSpace>()->lock();
-    
-    // set the bounds for the RealVectorStateSpace 
-    ob::RealVectorBounds bounds(4);
-    bounds.setLow(0, x_limits.first); //  x lower bound
-    bounds.setHigh(0, x_limits.second); // x upper bound
-    bounds.setLow(1, y_limits.first);  // y lower bound
-    bounds.setHigh(1, y_limits.second); // y upper bound
-    bounds.setLow(2, -1);  // v lower bound
-    bounds.setHigh(2, 1); // v upper bound
-    bounds.setLow(3, -M_PI / 3);  // phi lower bound
-    bounds.setHigh(3, M_PI / 3); // phi upper bound
-    space->as<ob::CompoundStateSpace>()->as<ob::RealVectorStateSpace>(0)->setBounds(bounds);
+    //space->as<ob::CompoundStateSpace>()->addSubspace(ob::StateSpacePtr(new ob::RealVectorStateSpace(6)), 1.0);
+
+    // Position space
+    auto posSpace = std::make_shared<ob::RealVectorStateSpace>(3);
+    ob::RealVectorBounds posBounds(3);
+    posBounds.setLow(0, x_limits.first); //  x lower bound
+    posBounds.setHigh(0, x_limits.second); // x upper bound
+    posBounds.setLow(1, y_limits.first);  // y lower bound
+    posBounds.setHigh(1, y_limits.second); // y upper bound
+    posBounds.setLow(2, z_limits.first);  // z lower bound
+    posBounds.setHigh(2, z_limits.second); // z upper bound
+    posSpace->setBounds(posBounds);
+
+    // Velocity space
+    auto velSpace = std::make_shared<ob::RealVectorStateSpace>(3);
+    ob::RealVectorBounds velBounds(3);
+    velBounds.setLow(-10);
+    velBounds.setHigh(10);
+    velSpace->setBounds(velBounds);
+
+    // Calculate weights
+    double maxPosRange = std::max({
+        x_limits.second - x_limits.first,
+        y_limits.second - y_limits.first,
+        z_limits.second - z_limits.first
+    });
+    double maxVelRange = 20;
+
+    double posWeight = 1;
+    double velWeight = maxPosRange/maxVelRange;
+
+    // Add spaces to compound space with weights
+    space->as<ob::CompoundStateSpace>()->addSubspace(posSpace, posWeight);
+    space->as<ob::CompoundStateSpace>()->addSubspace(velSpace, velWeight);
+
+    //space->as<ob::CompoundStateSpace>()->as<ob::RealVectorStateSpace>(0)->setBounds(bounds);
 
     return space;
 }
